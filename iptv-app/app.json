@@ -36,7 +36,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-video"
+      "expo-video",
+      "./android-network-config.plugin.js"
     ],
     "extra": {
       "eas": {
