@@ -1,0 +1,76 @@
+.tv-container {
+  min-height: 100vh;
+  background-color: #141414;
+  padding: 20px;
+}
+
+.tv-titulo {
+  color: #fff;
+  font-size: 32px;
+  margin: 0 0 20px 0;
+}
+
+.categorias-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 10px 0;
+  margin-bottom: 30px;
+  scrollbar-width: thin;
+  scrollbar-color: #E50914 #2F2F2F;
+}
+
+.categorias-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.categorias-scroll::-webkit-scrollbar-track {
+  background: #2F2F2F;
+  border-radius: 4px;
+}
+
+.categorias-scroll::-webkit-scrollbar-thumb {
+  background: #E50914;
+  border-radius: 4px;
+}
+
+.categoria-btn {
+  padding: 10px 20px;
+  background-color: #2F2F2F;
+  border: 1px solid #404040;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.categoria-btn:hover {
+  background-color: #404040;
+}
+
+.categoria-btn.activa {
+  background-color: #E50914;
+  border-color: #E50914;
+}
+
+.cargando {
+  text-align: center;
+  color: #B3B3B3;
+  font-size: 18px;
+  padding: 40px;
+}
+
+.canales-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .canales-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+  }
+}
