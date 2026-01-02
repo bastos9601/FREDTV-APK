@@ -1,0 +1,22 @@
+# EAS Build ignore file
+# Exclude system files and folders
+
+AppData/
+Temp/
+*.tmp
+*.log
+*.odl
+*.odlgz
+*.aodl
+*.tbres
+
+# Browser cache
+**/Code Cache/**
+**/IndexedDB/**
+**/User Data/**
+**/TokenBroker/**
+**/OneDrive/**
+**/BraveSoftware/**
+**/Google/**
+**/Microsoft/**
+**/Kiro/**
