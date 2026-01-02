@@ -251,9 +251,8 @@ class IPTVService {
     if (!this.credentials) {
       throw new Error('No hay credenciales configuradas');
     }
-    // Si hay proxy, usar ruta relativa, sino usar baseURL completo
-    const host = this.baseURL || 'http://zona593.live:8080';
-    // Para TV en vivo, usar .m3u8 por defecto (HLS)
+    // En producción usar /api, en desarrollo usar el proxy
+    const host = process.env.NODE_ENV === 'production' ? '/api' : '';
     return `${host}/live/${this.credentials.username}/${this.credentials.password}/${streamId}.${extension}`;
   }
 
@@ -261,7 +260,7 @@ class IPTVService {
     if (!this.credentials) {
       throw new Error('No hay credenciales configuradas');
     }
-    const host = this.baseURL || 'http://zona593.live:8080';
+    const host = process.env.NODE_ENV === 'production' ? '/api' : '';
     return `${host}/movie/${this.credentials.username}/${this.credentials.password}/${streamId}.${extension}`;
   }
 
@@ -269,7 +268,7 @@ class IPTVService {
     if (!this.credentials) {
       throw new Error('No hay credenciales configuradas');
     }
-    const host = this.baseURL || 'http://zona593.live:8080';
+    const host = process.env.NODE_ENV === 'production' ? '/api' : '';
     return `${host}/series/${this.credentials.username}/${this.credentials.password}/${streamId}.${extension}`;
   }
 }

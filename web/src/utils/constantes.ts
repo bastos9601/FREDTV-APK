@@ -1,5 +1,10 @@
+// Usar variable de entorno o fallback
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : '');
+
 export const IPTV_CONFIG = {
-  HOST: '', // Proxy configurado en package.json
+  // En desarrollo usa el proxy de package.json
+  // En producción usa el proxy de Netlify (/api)
+  HOST: API_BASE,
   ENDPOINTS: {
     LOGIN: '/player_api.php',
     LIVE_CATEGORIES: '/player_api.php',
