@@ -1,0 +1,23 @@
+# Configuración de Netlify para FRED TV Config
+# Este archivo evita que Netlify intente ejecutar comandos de build
+
+[build]
+  # No ejecutar ningún comando de build
+  command = ""
+  # Publicar desde la raíz
+  publish = "."
+
+# Headers para permitir CORS
+[[headers]]
+  for = "/config.json"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRED TV - Configuración</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #E50914 0%, #B20710 100%);
+            color: white;
+            padding: 40px 30px;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 18px;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .status {
+            display: inline-block;
+            background: #d4edda;
+            color: #155724;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            border: 2px solid #c3e6cb;
+        }
+
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .link-button {
+            display: block;
+            padding: 20px;
+            background: linear-gradient(135deg, #E50914 0%, #B20710 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .link-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(229, 9, 20, 0.4);
+        }
+
+        .link-button.secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .link-button.secondary:hover {
+            background: #e0e0e0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .info {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .info h3 {
+            color: #E50914;
+            margin-bottom: 15px;
+        }
+
+        .info ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info li {
+            padding: 8px 0;
+            color: #666;
+        }
+
+        .info li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .footer {
+            padding: 20px;
+            background: #f8f9fa;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 FRED TV</h1>
+            <p>Sistema de Configuración Remota</p>
+        </div>
+
+        <div class="content">
+            <div class="status">
+                ✅ Sistema Activo
+            </div>
+
+            <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+                Configuración remota funcionando correctamente
+            </p>
+
+            <div class="links">
+                <a href="/admin.html" class="link-button">
+                    🔧 Panel de Administración
+                </a>
+                <a href="/config.json" class="link-button secondary" target="_blank">
+                    📄 Ver Configuración Actual
+                </a>
+            </div>
+
+            <div class="info">
+                <h3>📋 Información del Sistema</h3>
+                <ul>
+                    <li>Servidor configurado y funcionando</li>
+                    <li>Panel admin disponible</li>
+                    <li>Configuración JSON accesible</li>
+                    <li>Listo para usar en la app</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>FRED TV © 2026 - Configuración Remota v1.0</p>
+        </div>
+    </div>
+</body>
+</html>

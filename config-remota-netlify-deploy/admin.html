@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - FRED TV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #E50914 0%, #B20710 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="url"],
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #E50914;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #E50914 0%, #B20710 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(229, 9, 20, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .json-preview {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #E50914;
+            margin: 30px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Panel Admin - FRED TV</h1>
+            <p>Configuración Remota del Servidor IPTV</p>
+        </div>
+
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <form id="configForm">
+                <div class="section-title">🌐 Configuración del Servidor</div>
+
+                <div class="form-group">
+                    <label for="servidor">Servidor Principal *</label>
+                    <input type="url" id="servidor" required placeholder="http://zgazy.com:8880">
+                    <div class="help-text">URL completa del servidor IPTV (incluye http:// o https://)</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="servidores_backup">Servidores de Respaldo</label>
+                    <textarea id="servidores_backup" placeholder="http://servidor1.com:8880&#10;http://servidor2.com:8880"></textarea>
+                    <div class="help-text">Un servidor por línea (opcional)</div>
+                </div>
+
+                <div class="section-title">📱 Configuración de la App</div>
+
+                <div class="form-group">
+                    <label for="version_minima">Versión Mínima de la App</label>
+                    <input type="text" id="version_minima" placeholder="1.0.0">
+                    <div class="help-text">Versión mínima requerida (formato: X.Y.Z)</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="mensaje_bienvenida">Mensaje de Bienvenida</label>
+                    <input type="text" id="mensaje_bienvenida" placeholder="Bienvenido a FRED TV">
+                </div>
+
+                <div class="section-title">🔧 Mantenimiento</div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="mantenimiento">
+                        <label for="mantenimiento" style="margin: 0;">Activar Modo Mantenimiento</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="mensaje_mantenimiento">Mensaje de Mantenimiento</label>
+                    <textarea id="mensaje_mantenimiento" placeholder="Estamos realizando mejoras. Volvemos pronto..."></textarea>
+                    <div class="help-text">Se muestra cuando el modo mantenimiento está activo</div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn-secondary" onclick="cargarConfig()">🔄 Recargar</button>
+                    <button type="submit" class="btn-primary">💾 Guardar Cambios</button>
+                </div>
+            </form>
+
+            <div class="json-preview">
+                <strong>Vista Previa del JSON:</strong>
+                <pre id="jsonPreview"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cargar configuración actual
+        async function cargarConfig() {
+            try {
+                const response = await fetch('/config.json?' + Date.now());
+                const config = await response.json();
+                
+                document.getElementById('servidor').value = config.servidor || '';
+                document.getElementById('servidores_backup').value = (config.servidores_backup || []).join('\n');
+                document.getElementById('version_minima').value = config.version_minima || '1.0.0';
+                document.getElementById('mensaje_bienvenida').value = config.mensaje_bienvenida || '';
+                document.getElementById('mantenimiento').checked = config.mantenimiento || false;
+                document.getElementById('mensaje_mantenimiento').value = config.mensaje_mantenimiento || '';
+                
+                actualizarPreview();
+                mostrarAlerta('Configuración cargada correctamente', 'success');
+            } catch (error) {
+                mostrarAlerta('Error al cargar la configuración: ' + error.message, 'error');
+            }
+        }
+
+        // Actualizar vista previa del JSON
+        function actualizarPreview() {
+            const config = obtenerConfigFormulario();
+            document.getElementById('jsonPreview').textContent = JSON.stringify(config, null, 2);
+        }
+
+        // Obtener configuración del formulario
+        function obtenerConfigFormulario() {
+            const servidoresBackup = document.getElementById('servidores_backup').value
+                .split('\n')
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
+
+            return {
+                servidor: document.getElementById('servidor').value,
+                servidores_backup: servidoresBackup,
+                version_minima: document.getElementById('version_minima').value || '1.0.0',
+                mensaje_bienvenida: document.getElementById('mensaje_bienvenida').value,
+                mantenimiento: document.getElementById('mantenimiento').checked,
+                mensaje_mantenimiento: document.getElementById('mensaje_mantenimiento').value,
+                ultima_actualizacion: new Date().toISOString()
+            };
+        }
+
+        // Guardar configuración
+        document.getElementById('configForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const config = obtenerConfigFormulario();
+            const jsonString = JSON.stringify(config, null, 2);
+            
+            // Crear un blob y descargarlo
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            mostrarAlerta('✅ Archivo config.json descargado. Súbelo a Netlify para aplicar los cambios.', 'success');
+        });
+
+        // Mostrar alerta
+        function mostrarAlerta(mensaje, tipo) {
+            const alert = document.getElementById('alert');
+            alert.textContent = mensaje;
+            alert.className = `alert ${tipo} show`;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Actualizar preview en tiempo real
+        document.querySelectorAll('input, textarea').forEach(element => {
+            element.addEventListener('input', actualizarPreview);
+        });
+
+        // Cargar configuración al iniciar
+        cargarConfig();
+    </script>
+</body>
+</html>

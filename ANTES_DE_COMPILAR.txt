@@ -1,0 +1,81 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║  ⚠️  IMPORTANTE: LEE ESTO ANTES DE COMPILAR                      ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+🎯 PASO CRÍTICO: Configurar URL de Netlify
+
+Antes de compilar, DEBES cambiar la URL de Netlify en el código:
+
+📁 Archivo: iptv-app/src/servicios/configRemotaServicio.ts
+📍 Línea: 15
+
+❌ ACTUAL (por defecto):
+   private CONFIG_URL = 'https://tu-sitio.netlify.app/config.json';
+
+✅ CAMBIAR POR (tu URL real):
+   private CONFIG_URL = 'https://TU-URL-REAL.netlify.app/config.json';
+
+📝 Ejemplo:
+   private CONFIG_URL = 'https://fredtv-config.netlify.app/config.json';
+
+
+🔍 ¿Cómo Obtener tu URL de Netlify?
+
+1. Ve a: https://app.netlify.com
+2. Abre tu sitio (el que creaste con config-remota-netlify-deploy)
+3. Copia la URL que aparece arriba
+4. Agrégale /config.json al final
+
+
+✅ CHECKLIST ANTES DE COMPILAR:
+
+[ ] 1. Hice deploy de config-remota-netlify-deploy en Netlify
+[ ] 2. Verifiqué que funcione: https://mi-sitio.netlify.app/config.json
+[ ] 3. Copié la URL correcta
+[ ] 4. Cambié la línea 15 en configRemotaServicio.ts
+[ ] 5. Guardé el archivo
+[ ] 6. Estoy listo para compilar
+
+
+🚀 CÓMO COMPILAR:
+
+Opción 1 - Script Automático:
+   Doble click en: compilar-apk.bat
+
+Opción 2 - Manual:
+   cd iptv-app
+   eas build --platform android --profile production
+
+Opción 3 - Guía Completa:
+   Lee: GUIA_RECOMPILAR_APK.md
+
+
+⏱️ TIEMPO ESTIMADO:
+
+• Compilación: 10-20 minutos
+• Descarga: 2-5 minutos
+• Total: ~25 minutos
+
+
+📥 DESPUÉS DE LA COMPILACIÓN:
+
+1. Descarga la APK desde el enlace que te da EAS
+2. Instala en tu dispositivo Android
+3. Prueba que funcione
+4. ¡Listo! Ahora puedes cambiar el servidor desde Netlify
+
+
+🎉 RESULTADO FINAL:
+
+Después de esta compilación:
+✅ Tendrás una APK lista para distribuir
+✅ La app consultará Netlify automáticamente
+✅ Podrás cambiar el servidor sin recompilar
+✅ Esta es la ÚLTIMA vez que necesitas compilar
+
+
+╔══════════════════════════════════════════════════════════════════╗
+║  ¿Listo? Configura la URL y ejecuta: compilar-apk.bat           ║
+╚══════════════════════════════════════════════════════════════════╝

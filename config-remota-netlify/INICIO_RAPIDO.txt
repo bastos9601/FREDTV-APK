@@ -1,0 +1,127 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║   📦 CONFIGURACIÓN REMOTA - FRED TV                              ║
+║   Inicio Rápido en 6 Pasos                                      ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+🎯 ¿QUÉ HACE ESTO?
+───────────────────
+Te permite cambiar el servidor IPTV de TODAS las APKs instaladas
+sin necesidad de recompilar. Solo editas un JSON en Netlify.
+
+
+📋 PASOS DE INSTALACIÓN
+───────────────────────
+
+1️⃣  SUBIR A NETLIFY
+    ─────────────────
+    Copia estos archivos a tu carpeta web/:
+    • config.json
+    • admin.html
+    
+    Luego sube a Netlify:
+    cd web
+    netlify deploy --prod
+
+
+2️⃣  COPIAR SERVICIO A LA APP
+    ──────────────────────────
+    cp configRemotaServicio.ts iptv-app/src/servicios/
+
+
+3️⃣  CONFIGURAR URL DE NETLIFY
+    ──────────────────────────
+    Edita: iptv-app/src/servicios/configRemotaServicio.ts
+    Línea 15:
+    
+    private CONFIG_URL = 'https://TU-SITIO.netlify.app/config.json';
+    
+    Cambia TU-SITIO por tu URL real de Netlify
+
+
+4️⃣  MODIFICAR App.tsx
+    ──────────────────
+    Copia el código de App.tsx a tu iptv-app/App.tsx
+    O agrega manualmente el useEffect que carga la configuración
+
+
+5️⃣  MODIFICAR iptvServicio.ts
+    ──────────────────────────
+    Agrega los métodos setBaseURL() y getBaseURL()
+    Ver: iptvServicio-modificaciones.ts
+
+
+6️⃣  RECOMPILAR APK (ÚLTIMA VEZ)
+    ────────────────────────────
+    cd iptv-app
+    eas build --platform android
+    
+    ⚠️ Esta es la ÚLTIMA vez que recompilas
+    Después de esto, cambias el servidor desde Netlify
+
+
+✅ VERIFICAR QUE FUNCIONA
+──────────────────────────
+
+1. Abre en navegador:
+   https://tu-sitio.netlify.app/config.json
+   
+   Deberías ver el JSON
+
+2. Abre el panel admin:
+   https://tu-sitio.netlify.app/admin.html
+   
+   Deberías ver el panel visual
+
+3. Instala la APK y verifica los logs
+
+
+🔄 CÓMO CAMBIAR EL SERVIDOR
+────────────────────────────
+
+Opción 1 - Panel Admin (Recomendado):
+  1. Abre: https://tu-sitio.netlify.app/admin.html
+  2. Edita "Servidor Principal"
+  3. Click "Guardar Cambios"
+  4. Descarga config.json
+  5. Súbelo a Netlify
+
+Opción 2 - Editar Directamente:
+  1. Edita config.json
+  2. Cambia el campo "servidor"
+  3. Sube a Netlify: netlify deploy --prod
+
+Resultado: En máximo 1 hora, todas las APKs usan el nuevo servidor
+
+
+⏱️ TIEMPO DE ACTUALIZACIÓN
+───────────────────────────
+• Primera vez: Inmediatamente al abrir la app
+• Después: Cada 1 hora automáticamente
+• Sin internet: Usa el último servidor guardado
+
+
+📚 DOCUMENTACIÓN COMPLETA
+──────────────────────────
+• README.md - Introducción
+• INSTRUCCIONES.md - Guía completa paso a paso
+• RESUMEN_VISUAL.md - Diagramas visuales
+
+
+🎉 RESULTADO FINAL
+───────────────────
+✅ Cambias el servidor editando un JSON
+✅ Todas las APKs se actualizan automáticamente
+✅ Panel admin visual incluido
+✅ Sin necesidad de recompilar nunca más
+
+
+📞 SOPORTE
+───────────
+Si tienes problemas, lee INSTRUCCIONES.md para solución de problemas
+
+
+╔══════════════════════════════════════════════════════════════════╗
+║  ¡Listo para empezar! Lee INSTRUCCIONES.md para más detalles    ║
+╚══════════════════════════════════════════════════════════════════╝
