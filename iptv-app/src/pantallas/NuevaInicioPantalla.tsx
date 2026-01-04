@@ -95,33 +95,33 @@ export const NuevaInicioPantalla = () => {
       ]);
       const series = await iptvServicio.getSeries();
       
-      // Buscar la categoría "Estrenos HD CAM" (puede variar el nombre exacto)
-      const categoriaEstrenos = categorias.find(cat => 
-        cat.category_name.toLowerCase().includes('estrenos') && 
-        cat.category_name.toLowerCase().includes('hd') &&
-        cat.category_name.toLowerCase().includes('cam')
+      // Buscar primero la categoría "New Releases"
+      let categoriaEstrenos = categorias.find(cat => 
+        cat.category_name.toLowerCase().includes('new') && 
+        cat.category_name.toLowerCase().includes('releases')
       );
+      
+      // Si no existe "New Releases", buscar categoría con "CAM"
+      if (!categoriaEstrenos) {
+        categoriaEstrenos = categorias.find(cat => 
+          cat.category_name.toLowerCase().includes('cam')
+        );
+      }
+      
+      // Si no existe "CAM", buscar cualquier categoría con "estrenos"
+      if (!categoriaEstrenos) {
+        categoriaEstrenos = categorias.find(cat => 
+          cat.category_name.toLowerCase().includes('estrenos')
+        );
+      }
       
       let peliculasEstrenos: VodStream[] = [];
       
       if (categoriaEstrenos) {
-        // Filtrar películas de la categoría "Estrenos HD CAM"
+        // Filtrar películas de la categoría encontrada
         peliculasEstrenos = peliculas.filter(p => 
           p.category_id === categoriaEstrenos.category_id
         );
-      }
-      
-      // Si no hay películas en esa categoría, buscar solo por "estrenos"
-      if (peliculasEstrenos.length === 0) {
-        const categoriaEstrenossimple = categorias.find(cat => 
-          cat.category_name.toLowerCase().includes('estrenos')
-        );
-        
-        if (categoriaEstrenossimple) {
-          peliculasEstrenos = peliculas.filter(p => 
-            p.category_id === categoriaEstrenossimple.category_id
-          );
-        }
       }
       
       // Si aún no hay películas, usar las más recientes
@@ -291,7 +291,7 @@ export const NuevaInicioPantalla = () => {
           <FlatList
             horizontal
             data={peliculasRecientes}
-            keyExtractor={(item) => item.stream_id.toString()}
+            keyExtractor={(item, index) => `pelicula-${item.stream_id}-${index}`}
             renderItem={({ item }) => renderPosterItem(item, 'pelicula')}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}
@@ -309,7 +309,7 @@ export const NuevaInicioPantalla = () => {
           <FlatList
             horizontal
             data={seriesPopulares}
-            keyExtractor={(item) => item.series_id.toString()}
+            keyExtractor={(item, index) => `serie-${item.series_id}-${index}`}
             renderItem={({ item }) => renderPosterItem(item, 'serie')}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}

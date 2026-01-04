@@ -45,14 +45,14 @@ https://zona593.live:8080/player_api.php?username=Prueba1212&password=YvAn9eg4ba
 ### Opción 2: Comando curl (Windows PowerShell)
 
 ```powershell
-curl "https://zona593.live:8080/player_api.php?username=Prueba1212&password=YvAn9eg4ba"
+curl "http://gzytv.vip:8880/player_api.php?username=Prueba1212&password=YvAn9eg4ba"
 ```
 
 ### Opción 3: Postman o Insomnia
 
 1. Abre Postman
 2. Crea una petición GET
-3. URL: `https://zona593.live:8080/player_api.php`
+3. URL: `http://gzytv.vip:8880/player_api.php`
 4. Params:
    - username: `Prueba1212`
    - password: `YvAn9eg4ba`
@@ -80,13 +80,13 @@ curl "https://zona593.live:8080/player_api.php?username=Prueba1212&password=YvAn
 Has proporcionado:
 - **Usuario**: `Prueba1212`
 - **Contraseña**: `YvAn9eg4ba`
-- **Servidor**: `https://zona593.live:8080`
+- **Servidor**: `http://gzytv.vip:8880`
 
 ## ✅ Verificar Estado de la Cuenta
 
 ### Paso 1: Probar en Navegador
 ```
-https://zona593.live:8080/player_api.php?username=Prueba1212&password=YvAn9eg4ba
+http://gzytv.vip:8880/player_api.php?username=Prueba1212&password=YvAn9eg4ba
 ```
 
 ### Paso 2: Verificar Respuesta
@@ -188,4 +188,4 @@ La app está funcionando perfectamente, solo necesita credenciales válidas del 
 
 ---
 
-**Nota**: Las credenciales que proporcionaste (`Prueba1212` / `YvAn9eg4ba`) parecen ser de prueba. Verifica con tu proveedor que estén activas y sean válidas para el servidor `https://zona593.live:8080`.
+**Nota**: Las credenciales que proporcionaste (`Prueba1212` / `YvAn9eg4ba`) parecen ser de prueba. Verifica con tu proveedor que estén activas y sean válidas para el servidor `http://gzytv.vip:8880`.

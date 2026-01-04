@@ -1,5 +1,5 @@
 export const IPTV_CONFIG = {
-  HOST: 'http://zona593.live:8080', // Servidor principal
+  HOST: 'http://zgazy.com:8880', // Servidor principal
   ENDPOINTS: {
     LOGIN: '/player_api.php',
     LIVE_CATEGORIES: '/player_api.php',

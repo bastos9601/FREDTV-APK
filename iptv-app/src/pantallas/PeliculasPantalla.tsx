@@ -199,7 +199,7 @@ export const PeliculasPantalla = () => {
       {/* Lista de películas */}
       <FlatList
         data={peliculasFiltradas}
-        keyExtractor={(item) => item.stream_id.toString()}
+        keyExtractor={(item, index) => `pelicula-${item.stream_id}-${index}`}
         numColumns={3}
         showsVerticalScrollIndicator={false}
         renderItem={renderPelicula}
@@ -229,7 +229,7 @@ export const PeliculasPantalla = () => {
             </View>
             <FlatList
               data={categorias}
-              keyExtractor={(item) => item.category_id.toString()}
+              keyExtractor={(item, index) => `categoria-${item.category_id}-${index}`}
               renderItem={renderCategoria}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.categoriasList}

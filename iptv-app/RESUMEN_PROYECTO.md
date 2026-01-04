@@ -2,7 +2,7 @@
 
 ## 🎯 Descripción General
 
-Aplicación móvil IPTV completa desarrollada en **React Native con Expo** que permite a los usuarios acceder a contenido de TV en vivo, películas y series mediante autenticación con el servidor **Zona593** (https://zona593.live:8080) usando la API estándar de Xtream Codes.
+Aplicación móvil IPTV completa desarrollada en **React Native con Expo** que permite a los usuarios acceder a contenido de TV en vivo, películas y series mediante autenticación con el servidor **GZYTV** (http://gzytv.vip:8880) usando la API estándar de Xtream Codes.
 
 ## ✅ Estado del Proyecto
 

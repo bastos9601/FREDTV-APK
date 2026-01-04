@@ -2,7 +2,7 @@
 
 ## ⚠️ Problema Detectado: Error de SSL
 
-El servidor `https://zona593.live:8080` tiene un problema con el certificado SSL:
+El servidor anterior `https://zona593.live:8080` tenía un problema con el certificado SSL:
 ```
 ERR_SSL_PROTOCOL_ERROR
 ```
@@ -12,11 +12,11 @@ ERR_SSL_PROTOCOL_ERROR
 He cambiado la configuración para usar **HTTP** en lugar de **HTTPS**:
 
 ```typescript
-// Antes
-HOST: 'https://zona593.live:8080'
-
-// Ahora
+// Servidor anterior
 HOST: 'http://zona593.live:8080'
+
+// Servidor actual
+HOST: 'http://gzytv.vip:8880'
 ```
 
 ## 🧪 Probar la Nueva Configuración
@@ -25,14 +25,14 @@ HOST: 'http://zona593.live:8080'
 
 Abre en tu navegador:
 ```
-http://zona593.live:8080/player_api.php?username=Prueba1212&password=YvAn9eg4ba
+http://gzytv.vip:8880/player_api.php?username=Prueba1212&password=YvAn9eg4ba
 ```
 
 ### Opción 2: HTTPS (Si el servidor lo soporta)
 
 Abre en tu navegador:
 ```
-https://zona593.live:8080/player_api.php?username=Prueba1212&password=YvAn9eg4ba
+https://gzytv.vip:8880/player_api.php?username=Prueba1212&password=YvAn9eg4ba
 ```
 
 ## 🔄 Cambiar Configuración Manualmente
@@ -43,7 +43,7 @@ Si necesitas cambiar entre HTTP y HTTPS, edita el archivo:
 
 ```typescript
 export const IPTV_CONFIG = {
-  HOST: 'http://zona593.live:8080',  // Cambia aquí
+  HOST: 'http://gzytv.vip:8880',  // Cambia aquí
   // ...
 };
 ```
@@ -52,12 +52,12 @@ export const IPTV_CONFIG = {
 
 1. **HTTP** (Sin SSL):
    ```typescript
-   HOST: 'http://zona593.live:8080'
+   HOST: 'http://gzytv.vip:8880'
    ```
 
 2. **HTTPS** (Con SSL):
    ```typescript
-   HOST: 'https://zona593.live:8080'
+   HOST: 'https://gzytv.vip:8880'
    ```
 
 3. **Otro servidor**:
@@ -109,10 +109,10 @@ Si tu proveedor tiene múltiples servidores, prueba con diferentes URLs:
 
 ```typescript
 // Ejemplos comunes
-HOST: 'http://zona593.live:8080'
-HOST: 'http://zona593.live:80'
-HOST: 'http://zona593.live'
-HOST: 'http://ip-del-servidor:8080'
+HOST: 'http://gzytv.vip:8880'
+HOST: 'http://gzytv.vip:80'
+HOST: 'http://gzytv.vip'
+HOST: 'http://ip-del-servidor:8880'
 ```
 
 ## 🔍 Verificar Conectividad
@@ -120,20 +120,20 @@ HOST: 'http://ip-del-servidor:8080'
 ### Paso 1: Ping al Servidor
 
 ```bash
-ping zona593.live
+ping gzytv.vip
 ```
 
 ### Paso 2: Probar Puerto
 
 ```bash
 # Windows PowerShell
-Test-NetConnection -ComputerName zona593.live -Port 8080
+Test-NetConnection -ComputerName gzytv.vip -Port 8880
 ```
 
 ### Paso 3: Probar en Navegador
 
 ```
-http://zona593.live:8080/player_api.php?username=test&password=test
+http://gzytv.vip:8880/player_api.php?username=test&password=test
 ```
 
 ## 📝 Configuraciones Comunes
@@ -141,19 +141,19 @@ http://zona593.live:8080/player_api.php?username=test&password=test
 ### Servidor con Puerto Estándar HTTP (80)
 
 ```typescript
-HOST: 'http://zona593.live'
+HOST: 'http://gzytv.vip'
 ```
 
 ### Servidor con Puerto Personalizado
 
 ```typescript
-HOST: 'http://zona593.live:8080'
+HOST: 'http://gzytv.vip:8880'
 ```
 
 ### Servidor con HTTPS y Puerto Estándar (443)
 
 ```typescript
-HOST: 'https://zona593.live'
+HOST: 'https://gzytv.vip'
 ```
 
 ### Servidor con IP Directa
@@ -195,9 +195,9 @@ Si tienes varios servidores, puedes crear un selector:
 
 ```typescript
 export const SERVIDORES = {
-  PRINCIPAL: 'http://zona593.live:8080',
-  BACKUP: 'http://backup.zona593.live:8080',
-  LOCAL: 'http://192.168.1.100:8080',
+  PRINCIPAL: 'http://gzytv.vip:8880',
+  BACKUP: 'http://backup.gzytv.vip:8880',
+  LOCAL: 'http://192.168.1.100:8880',
 };
 
 export const IPTV_CONFIG = {
@@ -238,7 +238,7 @@ Si nada funciona, pregunta a tu proveedor:
 ---
 
 **Configuración actual**: HTTP (sin SSL)
-**Servidor**: zona593.live:8080
+**Servidor**: gzytv.vip:8880
 **Estado**: Listo para probar
 
 Reinicia la app y prueba nuevamente con las credenciales.

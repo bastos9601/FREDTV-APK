@@ -2,7 +2,7 @@
 
 ## 🔗 Base URL
 ```
-https://zona593.live:8080
+http://gzytv.vip:8880
 ```
 
 ## 🔐 Autenticación
@@ -34,9 +34,9 @@ GET /player_api.php?username={USER}&password={PASS}
     "max_connections": "2"
   },
   "server_info": {
-    "url": "https://zona593.live:8080",
-    "port": "8080",
-    "https_port": "8080",
+    "url": "http://gzytv.vip:8880",
+    "port": "8880",
+    "https_port": "8880",
     "server_protocol": "https",
     "rtmp_port": "1935",
     "timezone": "America/Guayaquil"
@@ -101,17 +101,17 @@ GET /player_api.php?username={USER}&password={PASS}&action=get_live_streams&cate
 
 **Formato M3U8:**
 ```
-https://zona593.live:8080/live/{USERNAME}/{PASSWORD}/{STREAM_ID}.m3u8
+http://gzytv.vip:8880/live/{USERNAME}/{PASSWORD}/{STREAM_ID}.m3u8
 ```
 
 **Formato TS:**
 ```
-https://zona593.live:8080/live/{USERNAME}/{PASSWORD}/{STREAM_ID}.ts
+http://gzytv.vip:8880/live/{USERNAME}/{PASSWORD}/{STREAM_ID}.ts
 ```
 
 **Ejemplo:**
 ```
-https://zona593.live:8080/live/usuario/contraseña/1001.m3u8
+http://gzytv.vip:8880/live/usuario/contraseña/1001.m3u8
 ```
 
 ### 5. Categorías de Películas (VOD)
@@ -170,12 +170,12 @@ GET /player_api.php?username={USER}&password={PASS}&action=get_vod_streams&categ
 ### 7. URL de Película
 
 ```
-https://zona593.live:8080/movie/{USERNAME}/{PASSWORD}/{STREAM_ID}.{EXTENSION}
+http://gzytv.vip:8880/movie/{USERNAME}/{PASSWORD}/{STREAM_ID}.{EXTENSION}
 ```
 
 **Ejemplo:**
 ```
-https://zona593.live:8080/movie/usuario/contraseña/2001.mp4
+http://gzytv.vip:8880/movie/usuario/contraseña/2001.mp4
 ```
 
 ### 8. Información Detallada de Película
@@ -302,12 +302,12 @@ GET /player_api.php?username={USER}&password={PASS}&action=get_series_info&serie
 ### 12. URL de Episodio de Serie
 
 ```
-https://zona593.live:8080/series/{USERNAME}/{PASSWORD}/{EPISODE_ID}.{EXTENSION}
+http://gzytv.vip:8880/series/{USERNAME}/{PASSWORD}/{EPISODE_ID}.{EXTENSION}
 ```
 
 **Ejemplo:**
 ```
-https://zona593.live:8080/series/usuario/contraseña/30011.mp4
+http://gzytv.vip:8880/series/usuario/contraseña/30011.mp4
 ```
 
 ### 13. EPG (Guía Electrónica de Programación)
@@ -404,28 +404,28 @@ const url = iptvServicio.getLiveStreamUrl(streamId, 'm3u8');
 
 ```bash
 # Autenticación
-https://zona593.live:8080/player_api.php?username=demo&password=demo
+http://gzytv.vip:8880/player_api.php?username=demo&password=demo
 
 # Canales en vivo
-https://zona593.live:8080/player_api.php?username=demo&password=demo&action=get_live_streams
+http://gzytv.vip:8880/player_api.php?username=demo&password=demo&action=get_live_streams
 
 # Stream en vivo
-https://zona593.live:8080/live/demo/demo/1001.m3u8
+http://gzytv.vip:8880/live/demo/demo/1001.m3u8
 
 # Películas
-https://zona593.live:8080/player_api.php?username=demo&password=demo&action=get_vod_streams
+http://gzytv.vip:8880/player_api.php?username=demo&password=demo&action=get_vod_streams
 
 # Stream de película
-https://zona593.live:8080/movie/demo/demo/2001.mp4
+http://gzytv.vip:8880/movie/demo/demo/2001.mp4
 
 # Series
-https://zona593.live:8080/player_api.php?username=demo&password=demo&action=get_series
+http://gzytv.vip:8880/player_api.php?username=demo&password=demo&action=get_series
 
 # Info de serie
-https://zona593.live:8080/player_api.php?username=demo&password=demo&action=get_series_info&series_id=3001
+http://gzytv.vip:8880/player_api.php?username=demo&password=demo&action=get_series_info&series_id=3001
 
 # Stream de episodio
-https://zona593.live:8080/series/demo/demo/30011.mp4
+http://gzytv.vip:8880/series/demo/demo/30011.mp4
 ```
 
 ## 🧪 Probar la API
@@ -434,12 +434,12 @@ Puedes probar los endpoints directamente en el navegador o con curl:
 
 ```bash
 # Probar autenticación
-curl "https://zona593.live:8080/player_api.php?username=TU_USUARIO&password=TU_CONTRASEÑA"
+curl "http://gzytv.vip:8880/player_api.php?username=TU_USUARIO&password=TU_CONTRASEÑA"
 
 # Probar canales
-curl "https://zona593.live:8080/player_api.php?username=TU_USUARIO&password=TU_CONTRASEÑA&action=get_live_streams"
+curl "http://gzytv.vip:8880/player_api.php?username=TU_USUARIO&password=TU_CONTRASEÑA&action=get_live_streams"
 ```
 
 ---
 
-**Nota**: Reemplaza `TU_USUARIO` y `TU_CONTRASEÑA` con tus credenciales reales de Zona593.
+**Nota**: Reemplaza `TU_USUARIO` y `TU_CONTRASEÑA` con tus credenciales reales de GZYTV.

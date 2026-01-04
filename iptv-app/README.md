@@ -19,7 +19,7 @@ Aplicación móvil IPTV desarrollada con React Native y Expo para acceder a cont
 - npm o yarn
 - Expo CLI
 - Android Studio (para emulador Android) o dispositivo físico
-- Cuenta IPTV válida en https://zona593.live:8080
+- Cuenta IPTV válida en http://gzytv.vip:8880
 
 ## 🛠️ Instalación
 

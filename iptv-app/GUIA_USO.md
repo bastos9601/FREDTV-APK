@@ -142,7 +142,7 @@ Sistema de favoritos para guardar canales/películas preferidas.
 **Solución**: 
 - Verifica tus credenciales con tu proveedor
 - Asegúrate de no tener espacios extra
-- Prueba en el navegador: `https://zona593.live:8080/player_api.php?username=TU_USUARIO&password=TU_CONTRASEÑA`
+- Prueba en el navegador: `http://gzytv.vip:8880/player_api.php?username=TU_USUARIO&password=TU_CONTRASEÑA`
 
 ### "No se pudieron cargar los canales"
 

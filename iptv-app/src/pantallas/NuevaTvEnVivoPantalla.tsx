@@ -321,7 +321,7 @@ export const NuevaTvEnVivoPantalla = () => {
       {/* Lista de Canales */}
       <FlatList
         data={filtrarCanales()}
-        keyExtractor={(item) => item.stream_id.toString()}
+        keyExtractor={(item, index) => `canal-${item.stream_id}-${index}`}
         renderItem={renderCanal}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listaCanales}
