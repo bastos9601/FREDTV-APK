@@ -1,0 +1,101 @@
+name: Build and Deploy APK
+
+# Cuándo se ejecuta
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'iptv-app/**'
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Descargar el código
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      # 2. Configurar Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      
+      # 3. Instalar dependencias
+      - name: Install dependencies
+        working-directory: ./iptv-app
+        run: npm install
+      
+      # 4. Setup Expo
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      
+      # 5. Compilar APK
+      - name: Build APK
+        working-directory: ./iptv-app
+        run: eas build --platform android --profile production --non-interactive --no-wait
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      
+      # 6. Esperar a que termine la compilación
+      - name: Wait for build
+        working-directory: ./iptv-app
+        run: |
+          BUILD_ID=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].id')
+          eas build:wait $BUILD_ID
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      
+      # 7. Descargar el APK
+      - name: Download APK
+        working-directory: ./iptv-app
+        run: |
+          BUILD_ID=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].id')
+          eas build:download $BUILD_ID --output=./app.apk
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      
+      # 8. Obtener versión del app.json
+      - name: Get version
+        id: version
+        working-directory: ./iptv-app
+        run: |
+          VERSION=$(cat app.json | jq -r '.expo.version')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+      
+      # 9. Crear Release en GitHub
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Version ${{ steps.version.outputs.VERSION }}
+          files: ./iptv-app/app.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # 10. Actualizar config.json
+      - name: Update config.json
+        run: |
+          cat > config-remota-netlify-deploy/config.json << EOF
+          {
+            "versionActual": "${{ steps.version.outputs.VERSION }}",
+            "urlDescargaApk": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}/app.apk",
+            "fechaActualizacion": "$(date +'%Y-%m-%d')"
+          }
+          EOF
+      
+      # 11. Subir a Netlify
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: './config-remota-netlify-deploy'
+          production-deploy: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
