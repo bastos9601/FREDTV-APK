@@ -2,7 +2,7 @@
   "expo": {
     "name": "FRED TV",
     "slug": "fredtv-iptv",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -27,17 +27,21 @@
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE",
+        "REQUEST_INSTALL_PACKAGES"
       ],
       "usesCleartextTraffic": true,
-      "versionCode": 3
+      "versionCode": 4
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-video",
-      "./android-network-config.plugin.js"
+      "./android-network-config.plugin.js",
+      "./android-install-apk.plugin.js"
     ],
     "extra": {
       "eas": {
