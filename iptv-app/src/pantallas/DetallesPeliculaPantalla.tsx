@@ -55,6 +55,7 @@ export const DetallesPeliculaPantalla = () => {
       url,
       titulo: pelicula.name,
       streamId: pelicula.stream_id,
+      imagen: pelicula.stream_icon,
     });
   };
 

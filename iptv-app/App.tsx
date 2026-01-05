@@ -2,6 +2,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider } from './src/contexto/AuthContext';
+import { PerfilProvider } from './src/contexto/PerfilContext';
 import { NavegacionPrincipal } from './src/navegacion/NavegacionPrincipal';
 import configRemotaServicio from './src/servicios/configRemotaServicio';
 import iptvServicio from './src/servicios/iptvServicio';
@@ -37,8 +38,10 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <NavegacionPrincipal />
-      <StatusBar style="light" backgroundColor="#141414" />
+      <PerfilProvider>
+        <NavegacionPrincipal />
+        <StatusBar style="light" backgroundColor="#141414" />
+      </PerfilProvider>
     </AuthProvider>
   );
 }

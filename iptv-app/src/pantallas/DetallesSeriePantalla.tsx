@@ -103,6 +103,7 @@ export const DetallesSeriePantalla = () => {
       episodio: episodio.episode_num,
       serieId: serie.series_id,
       streamId: episodio.id,
+      imagen: episodio.info?.movie_image || serie.cover,
     });
   };
 

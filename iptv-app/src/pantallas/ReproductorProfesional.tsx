@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as Brightness from 'expo-brightness';
 import { guardarProgreso, obtenerProgreso, ProgresoVideo } from '../utils/progresoStorage';
+import { toggleFavorito, esFavorito, Favorito } from '../utils/favoritosStorage';
 import iptvServicio from '../servicios/iptvServicio';
 
 const { width, height } = Dimensions.get('window');
@@ -30,7 +31,7 @@ const { width, height } = Dimensions.get('window');
 export const ReproductorProfesional = () => {
   const route = useRoute<any>();
   const navigation = useNavigation();
-  const { url, titulo, serie, temporada, episodio, esTvEnVivo, streamId, serieId, posicionInicial } = route.params;
+  const { url, titulo, serie, temporada, episodio, esTvEnVivo, streamId, serieId, posicionInicial, imagen } = route.params;
   
   const [mostrarControles, setMostrarControles] = useState(true);
   const [reproduciendo, setReproduciendo] = useState(true);
@@ -61,6 +62,7 @@ export const ReproductorProfesional = () => {
   const [brilloOriginal, setBrilloOriginal] = useState(0.5);
   const [pistasAudio, setPistasAudio] = useState<any[]>([]);
   const [pistaAudioSeleccionada, setPistaAudioSeleccionada] = useState<number>(0);
+  const [esFav, setEsFav] = useState(false);
   const barraRef = useRef<View>(null);
   const fadeAnim = useState(new Animated.Value(1))[0];
 
@@ -124,6 +126,37 @@ export const ReproductorProfesional = () => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT).catch(console.error);
     };
   }, []);
+
+  // Verificar si es favorito (solo para canales de TV)
+  useEffect(() => {
+    if (esTvEnVivo && streamId) {
+      verificarFavorito();
+    }
+  }, [esTvEnVivo, streamId]);
+
+  const verificarFavorito = async () => {
+    if (esTvEnVivo && streamId) {
+      const fav = await esFavorito(`canal_${streamId}`);
+      setEsFav(fav);
+    }
+  };
+
+  const manejarFavorito = async () => {
+    if (!esTvEnVivo || !streamId) return;
+
+    const favorito: Favorito = {
+      id: `canal_${streamId}`,
+      tipo: 'canal',
+      nombre: titulo,
+      imagen: imagen,
+      streamId: streamId,
+      fecha: Date.now(),
+      datos: { url },
+    };
+
+    const nuevoEstado = await toggleFavorito(favorito);
+    setEsFav(nuevoEstado);
+  };
 
   // Cargar información del siguiente episodio
   useEffect(() => {
@@ -295,6 +328,7 @@ export const ReproductorProfesional = () => {
               temporada,
               episodio,
               url,
+              imagen,
             };
             
             guardarProgreso(progreso);
@@ -328,6 +362,7 @@ export const ReproductorProfesional = () => {
           temporada,
           episodio,
           url,
+          imagen,
         };
         
         guardarProgreso(progreso);
@@ -716,12 +751,24 @@ export const ReproductorProfesional = () => {
               </Text>
               <View style={styles.headerButtons}>
                 {esTvEnVivo && (
-                  <TouchableOpacity 
-                    style={styles.botonHeader}
-                    onPress={volverACanales}
-                  >
-                    <Ionicons name="tv" size={24} color="#FFF" />
-                  </TouchableOpacity>
+                  <>
+                    <TouchableOpacity 
+                      style={styles.botonHeader}
+                      onPress={manejarFavorito}
+                    >
+                      <Ionicons 
+                        name={esFav ? "heart" : "heart-outline"} 
+                        size={24} 
+                        color={esFav ? COLORS.primary : "#FFF"} 
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.botonHeader}
+                      onPress={volverACanales}
+                    >
+                      <Ionicons name="tv" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                  </>
                 )}
                 {serie && (
                   <TouchableOpacity 

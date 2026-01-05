@@ -14,6 +14,7 @@ export interface ProgresoVideo {
   episodio?: number;
   extension?: string; // Extensión del archivo (mp4, mkv, etc.)
   url?: string; // URL completa del video
+  imagen?: string; // URL de la imagen/poster del contenido
 }
 
 const STORAGE_KEY = '@progreso_videos';
@@ -90,5 +91,22 @@ export const limpiarProgresosAntiguos = async (diasMaximos: number = 30): Promis
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(progresosActuales));
   } catch (error) {
     console.error('Error al limpiar progresos antiguos:', error);
+  }
+};
+
+/**
+ * Actualiza un progreso existente con nueva información (como la imagen)
+ */
+export const actualizarProgreso = async (id: string, actualizacion: Partial<ProgresoVideo>): Promise<void> => {
+  try {
+    const progresos = await obtenerTodosLosProgresos();
+    const index = progresos.findIndex(p => p.id === id);
+    
+    if (index >= 0) {
+      progresos[index] = { ...progresos[index], ...actualizacion };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(progresos));
+    }
+  } catch (error) {
+    console.error('Error al actualizar progreso:', error);
   }
 };

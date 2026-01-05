@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Image,
   FlatList,
   Alert,
+  RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexto/AuthContext';
@@ -17,14 +19,14 @@ import { obtenerTodosLosProgresos, ProgresoVideo, eliminarProgreso } from '../ut
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import iptvServicio from '../servicios/iptvServicio';
 
-const POSTER_WIDTH = 110;
-const POSTER_HEIGHT = 165;
+const { width } = Dimensions.get('window');
 
 export const PerfilPantalla = () => {
   const { usuario, cerrarSesion } = useAuth();
   const [favoritos, setFavoritos] = useState<Favorito[]>([]);
   const [continuarViendo, setContinuarViendo] = useState<ProgresoVideo[]>([]);
   const [pestanaActiva, setPestanaActiva] = useState<'favoritos' | 'continuar'>('favoritos');
+  const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<any>();
 
   useFocusEffect(
@@ -39,6 +41,12 @@ export const PerfilPantalla = () => {
 
     const progresos = await obtenerTodosLosProgresos();
     setContinuarViendo(progresos.sort((a, b) => b.fecha - a.fecha).slice(0, 20));
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await cargarDatos();
+    setRefreshing(false);
   };
 
   const confirmarEliminarFavorito = (favorito: Favorito) => {
@@ -87,7 +95,6 @@ export const PerfilPantalla = () => {
     const parentNavigation = navigation.getParent();
     if (!parentNavigation) return;
 
-    // Verificar que tengamos la URL guardada
     if (!progreso.url) {
       Alert.alert(
         'Contenido no disponible',
@@ -107,7 +114,6 @@ export const PerfilPantalla = () => {
       return;
     }
 
-    // Reproducir usando la URL guardada
     parentNavigation.navigate('Reproductor', {
       url: progreso.url,
       titulo: progreso.titulo,
@@ -124,36 +130,49 @@ export const PerfilPantalla = () => {
     <TouchableOpacity
       style={styles.favoritoItem}
       onPress={() => reproducirFavorito(item)}
+      activeOpacity={0.7}
     >
-      {item.imagen ? (
-        <Image
-          source={{ uri: item.imagen }}
-          style={styles.favoritoImagen}
-          resizeMode="cover"
-        />
-      ) : (
-        <View style={styles.favoritoPlaceholder}>
+      <View style={styles.favoritoImageContainer}>
+        {item.imagen ? (
+          <Image
+            source={{ uri: item.imagen }}
+            style={[
+              styles.favoritoImagen,
+              item.tipo === 'canal' && styles.canalImagen
+            ]}
+            resizeMode={item.tipo === 'canal' ? 'contain' : 'cover'}
+          />
+        ) : (
+          <View style={styles.favoritoPlaceholder}>
+            <Ionicons
+              name={item.tipo === 'pelicula' ? 'film' : item.tipo === 'serie' ? 'tv' : 'radio'}
+              size={50}
+              color={COLORS.textSecondary}
+            />
+          </View>
+        )}
+        <View style={styles.favoritoOverlay}>
+          <TouchableOpacity
+            style={styles.botonEliminarFavorito}
+            onPress={(e) => {
+              e.stopPropagation();
+              confirmarEliminarFavorito(item);
+            }}
+          >
+            <Ionicons name="heart" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.tipoBadge}>
           <Ionicons
             name={item.tipo === 'pelicula' ? 'film' : item.tipo === 'serie' ? 'tv' : 'radio'}
-            size={40}
-            color={COLORS.textSecondary}
+            size={12}
+            color="#FFF"
           />
         </View>
-      )}
-      <View style={styles.favoritoInfo}>
-        <Text style={styles.favoritoNombre} numberOfLines={2}>
-          {item.nombre}
-        </Text>
-        <Text style={styles.favoritoTipo}>
-          {item.tipo === 'pelicula' ? '🎬 Película' : item.tipo === 'serie' ? '📺 Serie' : '📡 Canal'}
-        </Text>
       </View>
-      <TouchableOpacity
-        style={styles.botonEliminar}
-        onPress={() => confirmarEliminarFavorito(item)}
-      >
-        <Ionicons name="heart" size={24} color={COLORS.primary} />
-      </TouchableOpacity>
+      <Text style={styles.favoritoNombre} numberOfLines={2}>
+        {item.nombre}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -179,27 +198,46 @@ export const PerfilPantalla = () => {
     <TouchableOpacity
       style={styles.progresoItem}
       onPress={() => continuarReproduccion(item)}
+      activeOpacity={0.7}
     >
-      <View style={styles.progresoPlaceholder}>
-        <Ionicons name="play-circle" size={40} color={COLORS.primary} />
-      </View>
-      <View style={styles.progresoInfo}>
-        <Text style={styles.progresoTitulo} numberOfLines={2}>
-          {item.titulo}
-        </Text>
-        <View style={styles.progresoBarraContainer}>
-          <View style={styles.progresoBarraFondo}>
-            <View style={[styles.progresoBarraProgreso, { width: `${item.porcentaje}%` }]} />
+      <View style={styles.progresoImageContainer}>
+        {item.imagen ? (
+          <Image
+            source={{ uri: item.imagen }}
+            style={styles.progresoImagen}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.progresoPlaceholder}>
+            <Ionicons name="play-circle" size={50} color={COLORS.primary} />
           </View>
-          <Text style={styles.progresoPorcentaje}>{Math.round(item.porcentaje)}%</Text>
+        )}
+        <View style={styles.progresoOverlay}>
+          <TouchableOpacity
+            style={styles.botonEliminarProgreso}
+            onPress={(e) => {
+              e.stopPropagation();
+              confirmarEliminarProgreso(item);
+            }}
+          >
+            <Ionicons name="close-circle" size={20} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.progresoBarraAbsoluta}>
+          <View style={[styles.progresoBarraProgreso, { width: `${item.porcentaje}%` }]} />
+        </View>
+        <View style={styles.porcentajeBadge}>
+          <Text style={styles.porcentajeTexto}>{Math.round(item.porcentaje)}%</Text>
         </View>
       </View>
-      <TouchableOpacity
-        style={styles.botonEliminarProgreso}
-        onPress={() => confirmarEliminarProgreso(item)}
-      >
-        <Ionicons name="close-circle" size={24} color={COLORS.textSecondary} />
-      </TouchableOpacity>
+      <Text style={styles.progresoTitulo} numberOfLines={2}>
+        {item.titulo}
+      </Text>
+      {item.tipo === 'episodio' && (
+        <Text style={styles.progresoInfo}>
+          T{item.temporada} E{item.episodio}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 
@@ -220,9 +258,40 @@ export const PerfilPantalla = () => {
         <Text style={styles.userInfo}>
           Expira: {usuario?.exp_date ? new Date(parseInt(String(usuario.exp_date)) * 1000).toLocaleDateString() : 'N/A'}
         </Text>
-        <Text style={styles.userInfo}>
-          Conexiones: {usuario?.active_cons || '0'} / {usuario?.max_connections || '0'}
-        </Text>
+        
+        {/* Barra de Conexiones */}
+        <View style={styles.conexionesContainer}>
+          <View style={styles.conexionesHeader}>
+            <Ionicons name="phone-portrait" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.conexionesLabel}>Conexiones</Text>
+          </View>
+          <View style={styles.conexionesBarraContainer}>
+            <View style={styles.conexionesBarraFondo}>
+              <View 
+                style={[
+                  styles.conexionesBarraActiva, 
+                  { 
+                    width: `${Math.max(
+                      ((parseInt(String(usuario?.active_cons || 0)) / parseInt(String(usuario?.max_connections || 1))) * 100),
+                      (1 / parseInt(String(usuario?.max_connections || 1))) * 100
+                    )}%`,
+                    backgroundColor: parseInt(String(usuario?.active_cons || 0)) >= parseInt(String(usuario?.max_connections || 1)) 
+                      ? '#EF4444' 
+                      : COLORS.primary
+                  }
+                ]} 
+              />
+            </View>
+            <Text style={styles.conexionesTexto}>
+              {Math.max(parseInt(String(usuario?.active_cons || 0)), 1)} / {usuario?.max_connections || '0'}
+            </Text>
+          </View>
+          {parseInt(String(usuario?.active_cons || 0)) === 0 && (
+            <Text style={styles.conexionesNota}>
+              * Mínimo 1 (este dispositivo)
+            </Text>
+          )}
+        </View>
         
         <TouchableOpacity style={styles.logoutButton} onPress={cerrarSesion}>
           <Ionicons name="log-out-outline" size={20} color="#FFF" />
@@ -269,15 +338,37 @@ export const PerfilPantalla = () => {
               data={favoritos}
               keyExtractor={(item) => item.id}
               renderItem={renderFavorito}
+              numColumns={3}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.lista}
+              contentContainerStyle={styles.gridLista}
+              columnWrapperStyle={styles.gridRow}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={COLORS.primary}
+                  colors={[COLORS.primary]}
+                />
+              }
             />
           ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="heart-outline" size={60} color={COLORS.textSecondary} />
-              <Text style={styles.emptyText}>No tienes favoritos</Text>
-              <Text style={styles.emptySubtext}>Agrega películas, series o canales a favoritos</Text>
-            </View>
+            <ScrollView
+              contentContainerStyle={styles.emptyScrollContainer}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={COLORS.primary}
+                  colors={[COLORS.primary]}
+                />
+              }
+            >
+              <View style={styles.emptyContainer}>
+                <Ionicons name="heart-outline" size={60} color={COLORS.textSecondary} />
+                <Text style={styles.emptyText}>No tienes favoritos</Text>
+                <Text style={styles.emptySubtext}>Agrega películas, series o canales a favoritos</Text>
+              </View>
+            </ScrollView>
           )
         ) : (
           continuarViendo.length > 0 ? (
@@ -285,15 +376,37 @@ export const PerfilPantalla = () => {
               data={continuarViendo}
               keyExtractor={(item) => item.id}
               renderItem={renderProgreso}
+              numColumns={3}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.lista}
+              contentContainerStyle={styles.gridLista}
+              columnWrapperStyle={styles.gridRow}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={COLORS.primary}
+                  colors={[COLORS.primary]}
+                />
+              }
             />
           ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="play-circle-outline" size={60} color={COLORS.textSecondary} />
-              <Text style={styles.emptyText}>No hay contenido para continuar</Text>
-              <Text style={styles.emptySubtext}>Empieza a ver películas o series</Text>
-            </View>
+            <ScrollView
+              contentContainerStyle={styles.emptyScrollContainer}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={COLORS.primary}
+                  colors={[COLORS.primary]}
+                />
+              }
+            >
+              <View style={styles.emptyContainer}>
+                <Ionicons name="play-circle-outline" size={60} color={COLORS.textSecondary} />
+                <Text style={styles.emptyText}>No hay contenido para continuar</Text>
+                <Text style={styles.emptySubtext}>Empieza a ver películas o series</Text>
+              </View>
+            </ScrollView>
           )
         )}
       </View>
@@ -309,67 +422,111 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 15,
     paddingTop: 50,
-    paddingBottom: 10,
+    paddingBottom: 15,
     backgroundColor: COLORS.background,
   },
   logo: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.primary,
   },
   subtitulo: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginTop: 2,
+    marginTop: 4,
   },
   userCard: {
     backgroundColor: COLORS.card,
     marginHorizontal: 15,
-    marginVertical: 10,
-    padding: 20,
+    marginBottom: 15,
+    padding: 25,
     borderRadius: 15,
     alignItems: 'center',
   },
   userIconContainer: {
-    marginBottom: 10,
+    marginBottom: 15,
   },
   userName: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: 5,
+    marginBottom: 8,
   },
   userInfo: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginVertical: 2,
+    marginVertical: 3,
+  },
+  conexionesContainer: {
+    width: '100%',
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  conexionesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  conexionesLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  conexionesBarraContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  conexionesBarraFondo: {
+    flex: 1,
+    height: 8,
+    backgroundColor: COLORS.background,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  conexionesBarraActiva: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  conexionesTexto: {
+    fontSize: 13,
+    color: COLORS.text,
+    fontWeight: 'bold',
+    minWidth: 50,
+  },
+  conexionesNota: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
     borderRadius: 25,
     marginTop: 15,
   },
   logoutText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 'bold',
     marginLeft: 8,
   },
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 15,
-    marginTop: 10,
+    marginBottom: 15,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     backgroundColor: COLORS.card,
     marginHorizontal: 5,
     borderRadius: 10,
@@ -381,8 +538,9 @@ const styles = StyleSheet.create({
   },
   tabText: {
     color: COLORS.textSecondary,
-    fontSize: 14,
+    fontSize: 13,
     marginLeft: 8,
+    fontWeight: '500',
   },
   tabTextActive: {
     color: COLORS.primary,
@@ -390,117 +548,175 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    marginTop: 10,
   },
-  lista: {
-    padding: 15,
+  gridLista: {
+    padding: 8,
+  },
+  gridRow: {
+    justifyContent: 'flex-start',
   },
   favoritoItem: {
-    flexDirection: 'row',
+    width: (width - 32) / 3,
+    marginBottom: 8,
+    marginHorizontal: 4,
+  },
+  favoritoImageContainer: {
+    width: '100%',
+    aspectRatio: 2/3,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
     backgroundColor: COLORS.card,
-    padding: 12,
-    marginBottom: 10,
-    borderRadius: 10,
-    alignItems: 'center',
   },
   favoritoImagen: {
-    width: 60,
-    height: 90,
-    borderRadius: 8,
-    backgroundColor: COLORS.background,
+    width: '100%',
+    height: '100%',
+  },
+  canalImagen: {
+    backgroundColor: COLORS.card,
+    padding: 10,
   },
   favoritoPlaceholder: {
-    width: 60,
-    height: 90,
-    borderRadius: 8,
-    backgroundColor: COLORS.background,
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.card,
   },
-  favoritoInfo: {
-    flex: 1,
-    marginLeft: 12,
+  favoritoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    opacity: 0,
+  },
+  botonEliminarFavorito: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 15,
+    padding: 6,
+  },
+  tipoBadge: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 12,
+    padding: 4,
   },
   favoritoNombre: {
     color: COLORS.text,
-    fontSize: 15,
+    fontSize: 11,
     fontWeight: '600',
-    marginBottom: 5,
-  },
-  favoritoTipo: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-  },
-  botonEliminar: {
-    padding: 8,
+    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 2,
   },
   progresoItem: {
-    flexDirection: 'row',
+    width: (width - 32) / 3,
+    marginBottom: 8,
+    marginHorizontal: 4,
+  },
+  progresoImageContainer: {
+    width: '100%',
+    aspectRatio: 16/9,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
     backgroundColor: COLORS.card,
-    padding: 12,
-    marginBottom: 10,
-    borderRadius: 10,
-    alignItems: 'center',
+  },
+  progresoImagen: {
+    width: '100%',
+    height: '100%',
   },
   progresoPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: COLORS.background,
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.card,
   },
-  progresoInfo: {
-    flex: 1,
-    marginLeft: 12,
+  progresoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    opacity: 0,
   },
-  progresoTitulo: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
+  botonEliminarProgreso: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 12,
+    padding: 4,
   },
-  progresoBarraContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  progresoBarraFondo: {
-    flex: 1,
-    height: 4,
-    backgroundColor: COLORS.background,
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginRight: 10,
+  progresoBarraAbsoluta: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   progresoBarraProgreso: {
     height: '100%',
     backgroundColor: COLORS.primary,
   },
-  progresoPorcentaje: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    minWidth: 40,
+  porcentajeBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
   },
-  botonEliminarProgreso: {
-    padding: 8,
-    marginLeft: 8,
+  porcentajeTexto: {
+    color: COLORS.text,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  progresoTitulo: {
+    color: COLORS.text,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 2,
+  },
+  progresoInfo: {
+    color: COLORS.textSecondary,
+    fontSize: 9,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  emptyScrollContainer: {
+    flexGrow: 1,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
+    paddingTop: 80,
+    paddingHorizontal: 30,
   },
   emptyText: {
     color: COLORS.text,
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 15,
+    marginTop: 20,
   },
   emptySubtext: {
     color: COLORS.textSecondary,
     fontSize: 14,
-    marginTop: 5,
+    marginTop: 8,
     textAlign: 'center',
   },
 });

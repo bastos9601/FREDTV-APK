@@ -8,12 +8,17 @@ import {
   TouchableOpacity,
   Dimensions,
   FlatList,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import iptvServicio, { VodStream, SeriesInfo } from '../servicios/iptvServicio';
+import iptvServicio, { VodStream, SeriesInfo, LiveStream } from '../servicios/iptvServicio';
 import { COLORS } from '../utils/constantes';
 import { useAuth } from '../contexto/AuthContext';
+import { obtenerTodosLosProgresos, ProgresoVideo, eliminarProgreso, guardarProgreso } from '../utils/progresoStorage';
+import { TarjetaContinuarViendo } from '../componentes/TarjetaContinuarViendo';
+import { TarjetaCanalTV } from '../componentes/TarjetaCanalTV';
 
 const { width } = Dimensions.get('window');
 const BANNER_HEIGHT = 200;
@@ -27,11 +32,26 @@ export const NuevaInicioPantalla = () => {
   const [bannerIndex, setBannerIndex] = useState(0);
   const [todasLasPeliculasEstrenos, setTodasLasPeliculasEstrenos] = useState<VodStream[]>([]);
   const [indiceGrupo, setIndiceGrupo] = useState(0);
+  const [fechaHora, setFechaHora] = useState(new Date());
+  const [continuarViendo, setContinuarViendo] = useState<ProgresoVideo[]>([]);
+  const [canalesPeru, setCanalesPeru] = useState<LiveStream[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<any>();
   const { usuario, cerrarSesion } = useAuth();
 
   useEffect(() => {
     cargarContenido();
+    cargarContinuarViendo();
+    cargarCanalesPeru();
+  }, []);
+
+  // Actualizar fecha y hora cada segundo
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      setFechaHora(new Date());
+    }, 1000);
+
+    return () => clearInterval(intervalo);
   }, []);
 
   // Auto-deslizamiento del carrusel cada 4 segundos
@@ -153,6 +173,89 @@ export const NuevaInicioPantalla = () => {
     }
   };
 
+  const cargarContinuarViendo = async () => {
+    try {
+      const progresos = await obtenerTodosLosProgresos();
+      
+      // Cargar películas y series para obtener las imágenes
+      const [peliculas, series] = await Promise.all([
+        iptvServicio.getVodStreams().catch(() => []),
+        iptvServicio.getSeries().catch(() => []),
+      ]);
+      
+      // Enriquecer progresos con imágenes si no las tienen
+      const progresosEnriquecidos = await Promise.all(
+        progresos.map(async (progreso) => {
+          if (!progreso.imagen) {
+            // Intentar encontrar la imagen según el tipo
+            if (progreso.tipo === 'pelicula' && progreso.streamId) {
+              const pelicula = peliculas.find(p => p.stream_id === progreso.streamId);
+              if (pelicula && pelicula.stream_icon) {
+                progreso.imagen = pelicula.stream_icon;
+                // Guardar el progreso actualizado
+                await guardarProgreso(progreso);
+                console.log(`Imagen encontrada y guardada para película: ${progreso.titulo}`, pelicula.stream_icon);
+              }
+            } else if ((progreso.tipo === 'serie' || progreso.tipo === 'episodio') && progreso.serieId) {
+              const serie = series.find(s => s.series_id === progreso.serieId);
+              if (serie && serie.cover) {
+                progreso.imagen = serie.cover;
+                // Guardar el progreso actualizado
+                await guardarProgreso(progreso);
+                console.log(`Imagen encontrada y guardada para serie: ${progreso.titulo}`, serie.cover);
+              }
+            }
+          } else {
+            console.log(`Progreso ya tiene imagen: ${progreso.titulo}`, progreso.imagen);
+          }
+          return progreso;
+        })
+      );
+      
+      // Ordenar por fecha más reciente y tomar los primeros 10
+      const progresosRecientes = progresosEnriquecidos
+        .sort((a, b) => b.fecha - a.fecha)
+        .slice(0, 10);
+      
+      console.log(`Total de progresos cargados: ${progresosRecientes.length}`);
+      setContinuarViendo(progresosRecientes);
+    } catch (error) {
+      console.error('Error cargando continuar viendo:', error);
+    }
+  };
+
+  const cargarCanalesPeru = async () => {
+    try {
+      // Obtener todas las categorías de TV
+      const categorias = await iptvServicio.getLiveCategories();
+      
+      // Buscar categoría de Perú (puede tener diferentes nombres)
+      const categoriaPeru = categorias.find(cat => 
+        cat.category_name.toLowerCase().includes('peru') ||
+        cat.category_name.toLowerCase().includes('perú') ||
+        cat.category_name.toLowerCase().includes('pe ')
+      );
+      
+      if (categoriaPeru) {
+        // Obtener canales de la categoría de Perú
+        const canales = await iptvServicio.getLiveStreams(categoriaPeru.category_id);
+        console.log(`Canales de Perú encontrados: ${canales.length}`);
+        setCanalesPeru(canales.slice(0, 15)); // Mostrar los primeros 15
+      } else {
+        // Si no hay categoría específica de Perú, buscar canales con "peru" en el nombre
+        const todosCanales = await iptvServicio.getLiveStreams();
+        const canalesPeruanos = todosCanales.filter(canal =>
+          canal.name.toLowerCase().includes('peru') ||
+          canal.name.toLowerCase().includes('perú')
+        );
+        console.log(`Canales peruanos encontrados por nombre: ${canalesPeruanos.length}`);
+        setCanalesPeru(canalesPeruanos.slice(0, 15));
+      }
+    } catch (error) {
+      console.error('Error cargando canales de Perú:', error);
+    }
+  };
+
   const verDetallesPelicula = (pelicula: VodStream) => {
     const parentNavigation = navigation.getParent();
     if (parentNavigation) {
@@ -170,6 +273,8 @@ export const NuevaInicioPantalla = () => {
       parentNavigation.navigate('Reproductor', {
         url,
         titulo: pelicula.name,
+        streamId: pelicula.stream_id,
+        imagen: pelicula.stream_icon,
       });
     }
   };
@@ -179,6 +284,93 @@ export const NuevaInicioPantalla = () => {
     if (parentNavigation) {
       parentNavigation.navigate('DetallesSerie', { serie });
     }
+  };
+
+  const reproducirCanal = (canal: LiveStream) => {
+    const url = iptvServicio.getLiveStreamUrl(canal.stream_id, 'm3u8');
+    const parentNavigation = navigation.getParent();
+    if (parentNavigation) {
+      parentNavigation.navigate('Reproductor', {
+        url,
+        titulo: canal.name,
+        esTvEnVivo: true,
+        streamId: canal.stream_id,
+      });
+    }
+  };
+
+  const continuarViendoVideo = (progreso: ProgresoVideo) => {
+    const parentNavigation = navigation.getParent();
+    if (parentNavigation && progreso.url) {
+      parentNavigation.navigate('Reproductor', {
+        url: progreso.url,
+        titulo: progreso.titulo,
+        streamId: progreso.streamId,
+        serieId: progreso.serieId,
+        temporada: progreso.temporada,
+        episodio: progreso.episodio,
+        serie: progreso.tipo === 'episodio' ? { series_id: progreso.serieId } : undefined,
+        esTvEnVivo: false,
+        posicionInicial: progreso.posicion,
+      });
+    }
+  };
+
+  const eliminarDeContinuarViendo = async (progreso: ProgresoVideo) => {
+    Alert.alert(
+      'Eliminar de Continuar Viendo',
+      `¿Deseas eliminar "${progreso.titulo}" de tu lista?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            await eliminarProgreso(progreso.id);
+            // Recargar la lista
+            await cargarContinuarViendo();
+          },
+        },
+      ]
+    );
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        cargarContenido(),
+        cargarContinuarViendo(),
+        cargarCanalesPeru(),
+      ]);
+    } catch (error) {
+      console.error('Error al actualizar:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const formatearFecha = () => {
+    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
+    const dia = dias[fechaHora.getDay()];
+    const numeroDia = fechaHora.getDate();
+    const mes = meses[fechaHora.getMonth()];
+    const año = fechaHora.getFullYear();
+    
+    return `${dia}, ${numeroDia} de ${mes} de ${año}`;
+  };
+
+  const formatearHora = () => {
+    const horas = fechaHora.getHours().toString().padStart(2, '0');
+    const minutos = fechaHora.getMinutes().toString().padStart(2, '0');
+    const segundos = fechaHora.getSeconds().toString().padStart(2, '0');
+    
+    return `${horas}:${minutos}:${segundos}`;
   };
 
   const renderBanner = () => {
@@ -268,7 +460,16 @@ export const NuevaInicioPantalla = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>FRED TV</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.logo}>FRED TV</Text>
+        </View>
+        <View style={styles.headerCenter}>
+          <View style={styles.relojContainer}>
+            <Ionicons name="time-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.horaTexto}>{formatearHora()}</Text>
+          </View>
+          <Text style={styles.fechaTexto}>{formatearFecha()}</Text>
+        </View>
         <View style={styles.headerIcons}>
           <TouchableOpacity onPress={cerrarSesion} style={styles.headerIcon}>
             <Ionicons name="person-circle" size={24} color={COLORS.text} />
@@ -276,9 +477,48 @@ export const NuevaInicioPantalla = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
+            title="Actualizando..."
+            titleColor={COLORS.text}
+          />
+        }
+      >
         {/* Banner Destacado */}
         {renderBanner()}
+
+        {/* Sección: Continuar Viendo */}
+        {continuarViendo.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <Ionicons name="play-circle" size={24} color={COLORS.primary} />
+                <Text style={styles.sectionTitle}>Continuar viendo</Text>
+              </View>
+            </View>
+            <FlatList
+              horizontal
+              data={continuarViendo}
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+              renderItem={({ item }) => (
+                <TarjetaContinuarViendo
+                  progreso={item}
+                  onPress={() => continuarViendoVideo(item)}
+                  onRemove={() => eliminarDeContinuarViendo(item)}
+                />
+              )}
+            />
+          </View>
+        )}
 
         {/* Sección: Películas Recientes */}
         <View style={styles.section}>
@@ -316,6 +556,34 @@ export const NuevaInicioPantalla = () => {
           />
         </View>
 
+        {/* Sección: Canales de Perú */}
+        {canalesPeru.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <Ionicons name="tv" size={24} color={COLORS.primary} />
+                <Text style={styles.sectionTitle}>Canales de Perú</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('TV')}>
+                <Text style={styles.seeAll}>Ver todo</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              horizontal
+              data={canalesPeru}
+              keyExtractor={(item, index) => `canal-${item.stream_id}-${index}`}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+              renderItem={({ item }) => (
+                <TarjetaCanalTV
+                  canal={item}
+                  onPress={() => reproducirCanal(item)}
+                />
+              )}
+            />
+          </View>
+        )}
+
         {/* Información del Usuario */}
         <View style={styles.userInfo}>
           <Text style={styles.userInfoText}>Usuario: {usuario?.username || 'N/A'}</Text>
@@ -342,13 +610,40 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     backgroundColor: COLORS.background,
   },
+  headerLeft: {
+    flex: 1.5,
+  },
+  headerCenter: {
+    flex: 2.5,
+    alignItems: 'flex-end',
+    paddingRight: 10,
+  },
   logo: {
     fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.primary,
   },
+  relojContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  horaTexto: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    letterSpacing: 1,
+  },
+  fechaTexto: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    textAlign: 'right',
+  },
   headerIcons: {
     flexDirection: 'row',
+    flex: 0.8,
+    justifyContent: 'flex-end',
   },
   headerIcon: {
     marginLeft: 15,
@@ -442,6 +737,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 15,
     marginBottom: 10,
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sectionTitle: {
     color: COLORS.text,

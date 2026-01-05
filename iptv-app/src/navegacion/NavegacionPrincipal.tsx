@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { SplashPantalla } from '../pantallas/SplashPantalla';
 import { LoginPantalla } from '../pantallas/LoginPantalla';
+import { SeleccionPerfilPantalla } from '../pantallas/SeleccionPerfilPantalla';
+import { GestionPerfilesPantalla } from '../pantallas/GestionPerfilesPantalla';
 import { NuevaInicioPantalla } from '../pantallas/NuevaInicioPantalla';
 import { NuevaTvEnVivoPantalla } from '../pantallas/NuevaTvEnVivoPantalla';
 import { PeliculasPantalla } from '../pantallas/PeliculasPantalla';
@@ -15,6 +17,7 @@ import { DetallesPeliculaPantalla } from '../pantallas/DetallesPeliculaPantalla'
 import { DetallesSeriePantalla } from '../pantallas/DetallesSeriePantalla';
 import { ReproductorProfesional } from '../pantallas/ReproductorProfesional';
 import { useAuth } from '../contexto/AuthContext';
+import { usePerfil } from '../contexto/PerfilContext';
 import { COLORS } from '../utils/constantes';
 
 const Stack = createNativeStackNavigator();
@@ -84,6 +87,7 @@ const TabNavigator = () => {
 
 export const NavegacionPrincipal = () => {
   const { usuario, cargando } = useAuth();
+  const { perfilActivo } = usePerfil();
   const [mostrarSplash, setMostrarSplash] = useState(true);
 
   // Mostrar splash solo la primera vez que se carga la app
@@ -123,11 +127,34 @@ export const NavegacionPrincipal = () => {
             component={LoginPantalla}
             options={{ headerShown: false }}
           />
+        ) : !perfilActivo ? (
+          <>
+            <Stack.Screen
+              name="SeleccionPerfil"
+              component={SeleccionPerfilPantalla}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="GestionPerfiles"
+              component={GestionPerfilesPantalla}
+              options={{ headerShown: false }}
+            />
+          </>
         ) : (
           <>
             <Stack.Screen
-              name="Main"
+              name="MainTabs"
               component={TabNavigator}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="SeleccionPerfil"
+              component={SeleccionPerfilPantalla}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="GestionPerfiles"
+              component={GestionPerfilesPantalla}
               options={{ headerShown: false }}
             />
             <Stack.Screen

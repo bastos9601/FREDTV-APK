@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, ImageBackground, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Alert, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { Input } from '../componentes/Input';
 import { Boton } from '../componentes/Boton';
 import { useAuth } from '../contexto/AuthContext';
@@ -47,7 +47,11 @@ export const LoginPantalla = () => {
               {/* Logo Container */}
               <View style={styles.logoContainer}>
                 <View style={styles.logoCircle}>
-                  <Ionicons name="tv" size={60} color={COLORS.primary} />
+                  <Image 
+                    source={require('../../assets/icon.png')}
+                    style={styles.logoImage}
+                    resizeMode="contain"
+                  />
                 </View>
                 <Text style={styles.titulo}>FRED TV</Text>
                 <Text style={styles.subtitulo}>Tu entretenimiento sin límites</Text>
@@ -140,6 +144,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 3,
     borderColor: COLORS.primary,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   titulo: {
     fontSize: 42,
