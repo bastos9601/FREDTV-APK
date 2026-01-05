@@ -1,4 +1,4 @@
-// App v3 - Sistema de actualizaciones completo
+// App v2.0.1 - Sistema de actualizaciones optimizado
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider } from './src/contexto/AuthContext';
