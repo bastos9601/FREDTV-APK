@@ -1,3 +1,4 @@
+// App con automatización de builds
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider } from './src/contexto/AuthContext';
