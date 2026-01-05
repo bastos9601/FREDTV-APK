@@ -1,12 +1,16 @@
 name: Build and Deploy APK
 
-# Cuándo se ejecuta
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
     paths:
       - 'iptv-app/**'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -16,67 +20,77 @@ jobs:
     steps:
       # 1. Descargar el código
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       # 2. Configurar Node.js
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
+          cache-dependency-path: iptv-app/package-lock.json
       
       # 3. Instalar dependencias
       - name: Install dependencies
         working-directory: ./iptv-app
-        run: npm install
+        run: npm ci
       
       # 4. Instalar EAS CLI
       - name: Install EAS CLI
         run: npm install -g eas-cli
       
-      # 5. Compilar APK y obtener URL
+      # 5. Compilar APK con Expo (EAS)
       - name: Build APK
         id: build
         working-directory: ./iptv-app
-        run: |
-          eas build --platform android --profile production --non-interactive > build-output.txt
-          cat build-output.txt
-          BUILD_URL=$(grep -oP 'https://expo.dev/artifacts/[a-zA-Z0-9-]+' build-output.txt | head -1)
-          echo "BUILD_URL=$BUILD_URL" >> $GITHUB_OUTPUT
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build --platform android --profile production --non-interactive | tee build-output.txt
+          BUILD_URL=$(grep -oE 'https://expo.dev/artifacts/[a-zA-Z0-9._/-]+' build-output.txt | head -1)
+          if [ -z "$BUILD_URL" ]; then
+            echo "❌ No se pudo obtener la URL del APK"
+            exit 1
+          fi
+          echo "BUILD_URL=$BUILD_URL" >> $GITHUB_OUTPUT
       
-      # 6. Descargar el APK
+      # 6. Descargar APK generado
       - name: Download APK
         working-directory: ./iptv-app
         run: |
-          curl -L -o app.apk "${{ steps.build.outputs.BUILD_URL }}"
+          curl -L "${{ steps.build.outputs.BUILD_URL }}" -o app.apk
       
-      # 7. Obtener versión del app.json
+      # 7. Obtener versión desde app.json
       - name: Get version
         id: version
         working-directory: ./iptv-app
         run: |
-          VERSION=$(cat app.json | jq -r '.expo.version')
+          VERSION=$(jq -r '.expo.version' app.json)
+          if [ "$VERSION" = "null" ] || [ -z "$VERSION" ]; then
+            echo "❌ No se pudo obtener la versión"
+            exit 1
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       
-      # 8. Crear Release en GitHub
-      - name: Create or Update GitHub Release
+      # 8. Crear / actualizar Release en GitHub y subir APK
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
           name: Version ${{ steps.version.outputs.VERSION }}
-          files: ./iptv-app/app.apk
+          files: iptv-app/app.apk
           draft: false
           prerelease: false
           make_latest: true
-          fail_on_unmatched_files: false
           generate_release_notes: false
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      # 9. Actualizar config.json
+      # 9. Actualizar config.json para Netlify
       - name: Update config.json
         run: |
+          mkdir -p config-remota-netlify-deploy
           cat > config-remota-netlify-deploy/config.json << EOF
           {
             "versionActual": "${{ steps.version.outputs.VERSION }}",
@@ -85,7 +99,7 @@ jobs:
           }
           EOF
       
-      # 10. Subir a Netlify
+      # 10. Deploy a Netlify
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v2
         with:
