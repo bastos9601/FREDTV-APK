@@ -47,20 +47,20 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           echo "Iniciando build..."
-          eas build --platform android --profile production --non-interactive 2>&1 | tee build-output.txt
+          eas build --platform android --profile production --non-interactive
           
-          echo "Buscando URL del APK..."
-          BUILD_URL=$(grep -oE 'https://expo\.dev/artifacts/eas/[a-zA-Z0-9._/-]+\.apk' build-output.txt | head -1)
+          echo "Esperando a que el build esté disponible..."
+          sleep 10
           
-          if [ -z "$BUILD_URL" ]; then
-            echo "Intentando con patrón alternativo..."
-            BUILD_URL=$(grep -oE 'https://[^[:space:]]+\.apk' build-output.txt | head -1)
-          fi
+          echo "Obteniendo información del último build..."
+          BUILD_INFO=$(eas build:list --platform android --limit 1 --json --non-interactive)
+          
+          BUILD_URL=$(echo "$BUILD_INFO" | jq -r '.[0].artifacts.buildUrl // empty')
           
           if [ -z "$BUILD_URL" ]; then
             echo "❌ No se pudo obtener la URL del APK"
-            echo "Output del build:"
-            cat build-output.txt
+            echo "Build info:"
+            echo "$BUILD_INFO"
             exit 1
           fi
           
