@@ -60,10 +60,17 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       
       # 8. Crear Release en GitHub
+      - name: Delete existing release if exists
+        continue-on-error: true
+        run: |
+          gh release delete v${{ steps.version.outputs.VERSION }} --yes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.version.outputs.VERSION }}-${{ github.run_number }}
+          tag_name: v${{ steps.version.outputs.VERSION }}
           name: Version ${{ steps.version.outputs.VERSION }}
           files: ./iptv-app/app.apk
         env:
@@ -75,7 +82,7 @@ jobs:
           cat > config-remota-netlify-deploy/config.json << EOF
           {
             "versionActual": "${{ steps.version.outputs.VERSION }}",
-            "urlDescargaApk": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}-${{ github.run_number }}/app.apk",
+            "urlDescargaApk": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}/app.apk",
             "fechaActualizacion": "$(date +'%Y-%m-%d')"
           }
           EOF
