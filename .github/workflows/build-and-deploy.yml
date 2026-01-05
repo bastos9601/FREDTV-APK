@@ -93,6 +93,15 @@ jobs:
           mkdir -p config-remota-netlify-deploy
           cat > config-remota-netlify-deploy/config.json << EOF
           {
+            "servidor": "http://zgazy.com:8880",
+            "servidores_backup": [
+              "http://zona593.live:8080"
+            ],
+            "version_minima": "1.0.0",
+            "mensaje_bienvenida": "Bienvenido a FRED TV",
+            "mantenimiento": false,
+            "mensaje_mantenimiento": "",
+            "ultima_actualizacion": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
             "versionActual": "${{ steps.version.outputs.VERSION }}",
             "urlDescargaApk": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}/app.apk",
             "fechaActualizacion": "$(date +'%Y-%m-%d')"
