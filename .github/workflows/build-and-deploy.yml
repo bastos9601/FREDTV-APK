@@ -33,32 +33,25 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli
       
-      # 5. Compilar APK
+      # 5. Compilar APK y obtener URL
       - name: Build APK
-        working-directory: ./iptv-app
-        run: eas build --platform android --profile production --non-interactive --no-wait
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      
-      # 6. Esperar a que termine la compilación
-      - name: Wait for build
+        id: build
         working-directory: ./iptv-app
         run: |
-          BUILD_ID=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].id')
-          eas build:wait $BUILD_ID
+          eas build --platform android --profile production --non-interactive > build-output.txt
+          cat build-output.txt
+          BUILD_URL=$(grep -oP 'https://expo.dev/artifacts/[a-zA-Z0-9-]+' build-output.txt | head -1)
+          echo "BUILD_URL=$BUILD_URL" >> $GITHUB_OUTPUT
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       
-      # 7. Descargar el APK
+      # 6. Descargar el APK
       - name: Download APK
         working-directory: ./iptv-app
         run: |
-          BUILD_ID=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].id')
-          eas build:download $BUILD_ID --output=./app.apk
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          curl -L -o app.apk "${{ steps.build.outputs.BUILD_URL }}"
       
-      # 8. Obtener versión del app.json
+      # 7. Obtener versión del app.json
       - name: Get version
         id: version
         working-directory: ./iptv-app
@@ -66,7 +59,7 @@ jobs:
           VERSION=$(cat app.json | jq -r '.expo.version')
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       
-      # 9. Crear Release en GitHub
+      # 8. Crear Release en GitHub
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -76,7 +69,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      # 10. Actualizar config.json
+      # 9. Actualizar config.json
       - name: Update config.json
         run: |
           cat > config-remota-netlify-deploy/config.json << EOF
@@ -87,7 +80,7 @@ jobs:
           }
           EOF
       
-      # 11. Subir a Netlify
+      # 10. Subir a Netlify
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v2
         with:
