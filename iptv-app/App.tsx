@@ -1,4 +1,4 @@
-// App v2 - Build automation
+// App v3 - Sistema de actualizaciones completo
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider } from './src/contexto/AuthContext';
