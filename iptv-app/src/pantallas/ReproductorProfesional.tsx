@@ -69,6 +69,11 @@ export const ReproductorProfesional = () => {
   const player = useVideoPlayer(url, (player) => {
     player.play();
     player.volume = volumen;
+    // Configurar modo live para streams en vivo
+    if (esTvEnVivo) {
+      player.loop = false; // No hacer loop en streams en vivo
+      // El player de expo-video maneja automáticamente HLS live streams
+    }
   });
 
   // Guardar y restaurar brillo original
@@ -276,7 +281,15 @@ export const ReproductorProfesional = () => {
           const playing = player.playing;
           
           setPosicion(currentTime);
-          setDuracion(duration);
+          
+          // Para streams en vivo, no usar la duración del buffer
+          if (!esTvEnVivo) {
+            setDuracion(duration);
+          } else {
+            // En modo live, la duración no es relevante
+            setDuracion(0);
+          }
+          
           setReproduciendo(playing);
           
           // Ocultar cargando si el video está reproduciendo
@@ -284,7 +297,7 @@ export const ReproductorProfesional = () => {
             setCargando(false);
           }
 
-          // Mostrar siguiente episodio cuando falten 30 segundos
+          // Mostrar siguiente episodio cuando falten 30 segundos (solo para series)
           if (serie && siguienteEpisodio && duration > 0 && !esTvEnVivo) {
             const tiempoRestante = duration - currentTime;
             if (tiempoRestante <= 30 && tiempoRestante > 0 && !mostrarSiguienteEpisodio) {
@@ -793,13 +806,16 @@ export const ReproductorProfesional = () => {
 
             {/* Controles Centrales */}
             <View style={styles.controlesCentro}>
-              <TouchableOpacity
-                style={styles.botonControl}
-                onPress={() => adelantar(-10)}
-              >
-                <Ionicons name="play-back" size={40} color="#FFF" />
-                <Text style={styles.textoControl}>10s</Text>
-              </TouchableOpacity>
+              {/* Solo mostrar botones de adelantar/retroceder si NO es TV en vivo */}
+              {!esTvEnVivo && (
+                <TouchableOpacity
+                  style={styles.botonControl}
+                  onPress={() => adelantar(-10)}
+                >
+                  <Ionicons name="play-back" size={40} color="#FFF" />
+                  <Text style={styles.textoControl}>10s</Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.botonPlayPausa}
@@ -812,40 +828,62 @@ export const ReproductorProfesional = () => {
                 />
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.botonControl}
-                onPress={() => adelantar(10)}
-              >
-                <Ionicons name="play-forward" size={40} color="#FFF" />
-                <Text style={styles.textoControl}>10s</Text>
-              </TouchableOpacity>
+              {!esTvEnVivo && (
+                <TouchableOpacity
+                  style={styles.botonControl}
+                  onPress={() => adelantar(10)}
+                >
+                  <Ionicons name="play-forward" size={40} color="#FFF" />
+                  <Text style={styles.textoControl}>10s</Text>
+                </TouchableOpacity>
+              )}
+              
+              {/* Para TV en vivo, mostrar indicador LIVE */}
+              {esTvEnVivo && (
+                <View style={styles.liveIndicador}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveTexto}>EN VIVO</Text>
+                </View>
+              )}
             </View>
 
             {/* Footer con Barra de Progreso */}
             <View style={styles.footer}>
-              {/* Barra de Progreso */}
-              <View style={styles.progresoContainer}>
-                <Text style={styles.tiempo}>
-                  {formatearTiempo(posicion)}
-                </Text>
-                <Pressable 
-                  ref={barraRef}
-                  style={styles.barraPrincipal}
-                  onPress={manejarToqueBarra}
-                >
-                  <View style={styles.barraFondo}>
-                    <View
-                      style={[
-                        styles.barraProgreso, 
-                        { width: `${calcularProgreso()}%` }
-                      ]}
-                    />
+              {/* Barra de Progreso - Solo para contenido bajo demanda */}
+              {!esTvEnVivo && (
+                <View style={styles.progresoContainer}>
+                  <Text style={styles.tiempo}>
+                    {formatearTiempo(posicion)}
+                  </Text>
+                  <Pressable 
+                    ref={barraRef}
+                    style={styles.barraPrincipal}
+                    onPress={manejarToqueBarra}
+                  >
+                    <View style={styles.barraFondo}>
+                      <View
+                        style={[
+                          styles.barraProgreso, 
+                          { width: `${calcularProgreso()}%` }
+                        ]}
+                      />
+                    </View>
+                  </Pressable>
+                  <Text style={styles.tiempo}>
+                    {duracion > 0 ? formatearTiempo(duracion) : '--:--'}
+                  </Text>
+                </View>
+              )}
+              
+              {/* Para TV en vivo, mostrar solo indicador de tiempo */}
+              {esTvEnVivo && (
+                <View style={styles.liveInfoContainer}>
+                  <View style={styles.liveBadge}>
+                    <View style={styles.liveDotSmall} />
+                    <Text style={styles.liveBadgeText}>TRANSMISIÓN EN VIVO</Text>
                   </View>
-                </Pressable>
-                <Text style={styles.tiempo}>
-                  {duracion > 0 ? formatearTiempo(duracion) : '--:--'}
-                </Text>
-              </View>
+                </View>
+              )}
 
               {/* Controles Inferiores */}
               <View style={styles.controlesInferiores}>
@@ -1749,5 +1787,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 20,
+  },
+  // Estilos para indicador LIVE
+  liveIndicador: {
+    position: 'absolute',
+    top: -60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(229, 9, 20, 0.9)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  liveDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFF',
+    marginRight: 8,
+  },
+  liveTexto: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  liveInfoContainer: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(229, 9, 20, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+  },
+  liveDotSmall: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFF',
+    marginRight: 8,
+  },
+  liveBadgeText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
 });

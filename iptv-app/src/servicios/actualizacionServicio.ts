@@ -1,20 +1,38 @@
-import { Alert, Linking, Platform } from 'react-native';
-import { Paths, File } from 'expo-file-system';
-import * as IntentLauncher from 'expo-intent-launcher';
 import Constants from 'expo-constants';
 
-const URL_CONFIG = 'https://panelfredtv.netlify.app/config.json';
-
-interface ConfigActualizacion {
+interface VersionInfo {
   versionActual: string;
-  urlDescargaApk: string;
-  fechaActualizacion: string;
+  versionDisponible: string;
+  hayActualizacion: boolean;
+  urlDescarga: string;
 }
 
+/**
+ * Servicio para verificar actualizaciones de la app
+ */
 class ActualizacionServicio {
+  // URL del archivo de versión en GitHub (puedes crear un archivo version.json en tu repo)
+  private readonly VERSION_URL = 'https://raw.githubusercontent.com/bastos9601/FREDTV-APK/main/version.json';
+  
+  // URL de descarga del APK
+  private readonly APK_URL = 'https://github.com/bastos9601/FREDTV-APK/releases/download/v{VERSION}/app.apk';
+
   /**
-   * Compara dos versiones en formato "X.Y.Z"
-   * Retorna: -1 si v1 < v2, 0 si son iguales, 1 si v1 > v2
+   * Obtiene la versión actual de la app desde app.json
+   */
+  private obtenerVersionActual(): string {
+    try {
+      // Intenta obtener la versión desde expo-constants
+      return Constants.expoConfig?.version || '2.0.4';
+    } catch (error) {
+      console.error('Error obteniendo versión actual:', error);
+      return '2.0.4';
+    }
+  }
+
+  /**
+   * Compara dos versiones en formato semántico (x.y.z)
+   * Retorna: 1 si v1 > v2, -1 si v1 < v2, 0 si son iguales
    */
   private compararVersiones(v1: string, v2: string): number {
     const partes1 = v1.split('.').map(Number);
@@ -34,121 +52,68 @@ class ActualizacionServicio {
   /**
    * Verifica si hay una actualización disponible
    */
-  async verificarActualizacion(): Promise<void> {
-    // Solo funciona en Android
-    if (Platform.OS !== 'android') {
-      return;
-    }
-
+  async verificarActualizacion(): Promise<VersionInfo> {
+    const versionActual = this.obtenerVersionActual();
+    
     try {
-      // Obtener versión instalada
-      const versionInstalada = Constants.expoConfig?.version || '1.0.0';
+      // Intenta obtener la versión desde GitHub
+      const response = await fetch(this.VERSION_URL, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
 
-      // Consultar servidor
-      const response = await fetch(URL_CONFIG);
       if (!response.ok) {
-        console.log('No se pudo verificar actualizaciones');
-        return;
+        console.log('No se encontró version.json en GitHub, usando valores por defecto');
+        // Si no existe el archivo, asumir que no hay actualización
+        return {
+          versionActual,
+          versionDisponible: versionActual,
+          hayActualizacion: false,
+          urlDescarga: this.APK_URL.replace('{VERSION}', versionActual),
+        };
       }
 
-      const config: ConfigActualizacion = await response.json();
+      const data = await response.json();
+      const versionDisponible = data.version || '2.0.4';
+      const urlDescarga = data.downloadUrl || this.APK_URL.replace('{VERSION}', versionDisponible);
 
       // Comparar versiones
-      const comparacion = this.compararVersiones(versionInstalada, config.versionActual);
+      const comparacion = this.compararVersiones(versionDisponible, versionActual);
+      const hayActualizacion = comparacion > 0;
 
-      if (comparacion < 0) {
-        // Hay una versión más nueva disponible
-        this.mostrarDialogoActualizacion(config, versionInstalada);
-      } else {
-        console.log('App actualizada a la última versión');
-      }
-    } catch (error) {
-      console.error('Error verificando actualizaciones:', error);
-    }
-  }
-
-  /**
-   * Muestra el diálogo de actualización al usuario
-   */
-  private mostrarDialogoActualizacion(config: ConfigActualizacion, versionActual: string): void {
-    Alert.alert(
-      '🔄 Actualización Disponible',
-      `Nueva versión ${config.versionActual} disponible\n` +
-        `Versión actual: ${versionActual}\n\n` +
-        `¿Deseas descargar e instalar la actualización?`,
-      [
-        {
-          text: 'Después',
-          style: 'cancel',
-        },
-        {
-          text: 'Actualizar Ahora',
-          onPress: () => this.descargarEInstalarAPK(config.urlDescargaApk),
-        },
-      ]
-    );
-  }
-
-  /**
-   * Descarga e instala el APK
-   */
-  private async descargarEInstalarAPK(url: string): Promise<void> {
-    try {
-      Alert.alert('Descargando...', 'Por favor espera mientras se descarga la actualización');
-
-      // Crear archivo en el directorio de cache
-      const apkFile = new File(Paths.cache, 'update.apk');
-
-      // Descargar APK
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Error descargando APK');
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      
-      await apkFile.create();
-      await apkFile.write(uint8Array);
-
-      console.log('APK descargado exitosamente');
-
-      // Instalar APK
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: apkFile.uri,
-        flags: 1,
-        type: 'application/vnd.android.package-archive',
+      console.log('Verificación de actualización:', {
+        versionActual,
+        versionDisponible,
+        hayActualizacion,
       });
+
+      return {
+        versionActual,
+        versionDisponible,
+        hayActualizacion,
+        urlDescarga,
+      };
     } catch (error) {
-      console.error('Error descargando actualización:', error);
-      Alert.alert('Error', 'No se pudo descargar la actualización. Intenta más tarde.');
+      console.log('Error al verificar actualización (normal si version.json no existe):', error.message);
+      
+      // En caso de error, retornar que no hay actualización
+      return {
+        versionActual,
+        versionDisponible: versionActual,
+        hayActualizacion: false,
+        urlDescarga: this.APK_URL.replace('{VERSION}', versionActual),
+      };
     }
   }
 
   /**
-   * Verifica actualizaciones manualmente (para botón)
+   * Obtiene la URL de descarga del APK más reciente
    */
-  async verificarActualizacionManual(): Promise<void> {
-    const versionInstalada = Constants.expoConfig?.version || '1.0.0';
-
-    try {
-      const response = await fetch(URL_CONFIG);
-      if (!response.ok) {
-        Alert.alert('Error', 'No se pudo conectar al servidor de actualizaciones');
-        return;
-      }
-
-      const config: ConfigActualizacion = await response.json();
-      const comparacion = this.compararVersiones(versionInstalada, config.versionActual);
-
-      if (comparacion < 0) {
-        this.mostrarDialogoActualizacion(config, versionInstalada);
-      } else {
-        Alert.alert('✅ App Actualizada', 'Ya tienes la última versión instalada');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo verificar actualizaciones');
-    }
+  async obtenerUrlDescarga(): Promise<string> {
+    const info = await this.verificarActualizacion();
+    return info.urlDescarga;
   }
 }
 

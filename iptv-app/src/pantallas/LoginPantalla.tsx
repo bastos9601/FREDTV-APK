@@ -5,11 +5,13 @@ import { Boton } from '../componentes/Boton';
 import { useAuth } from '../contexto/AuthContext';
 import { COLORS } from '../utils/constantes';
 import { Ionicons } from '@expo/vector-icons';
+import { ModalAnuncio } from '../componentes/ModalAnuncio';
 
 export const LoginPantalla = () => {
   const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [mostrarModalAnuncio, setMostrarModalAnuncio] = useState(true);
   const { iniciarSesion } = useAuth();
 
   const manejarLogin = async () => {
@@ -29,7 +31,14 @@ export const LoginPantalla = () => {
   };
 
   return (
-    <ImageBackground
+    <>
+      {/* Modal de Anuncio */}
+      <ModalAnuncio 
+        visible={mostrarModalAnuncio} 
+        onClose={() => setMostrarModalAnuncio(false)}
+      />
+      
+      <ImageBackground
       source={{ uri: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1200' }}
       style={styles.contenedor}
       blurRadius={3}
@@ -107,6 +116,7 @@ export const LoginPantalla = () => {
         </KeyboardAvoidingView>
       </View>
     </ImageBackground>
+    </>
   );
 };
 

@@ -19,6 +19,8 @@ import { useAuth } from '../contexto/AuthContext';
 import { obtenerTodosLosProgresos, ProgresoVideo, eliminarProgreso, guardarProgreso } from '../utils/progresoStorage';
 import { TarjetaContinuarViendo } from '../componentes/TarjetaContinuarViendo';
 import { TarjetaCanalTV } from '../componentes/TarjetaCanalTV';
+import { ModalDescargaAPK } from '../componentes/ModalDescargaAPK';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const BANNER_HEIGHT = 200;
@@ -36,6 +38,7 @@ export const NuevaInicioPantalla = () => {
   const [continuarViendo, setContinuarViendo] = useState<ProgresoVideo[]>([]);
   const [canalesPeru, setCanalesPeru] = useState<LiveStream[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [mostrarModalDescarga, setMostrarModalDescarga] = useState(false);
   const navigation = useNavigation<any>();
   const { usuario, cerrarSesion } = useAuth();
 
@@ -43,7 +46,33 @@ export const NuevaInicioPantalla = () => {
     cargarContenido();
     cargarContinuarViendo();
     cargarCanalesPeru();
+    verificarYMostrarModalDescarga();
   }, []);
+
+  const verificarYMostrarModalDescarga = async () => {
+    try {
+      // Verificar si hay actualización disponible
+      const actualizacionServicio = (await import('../servicios/actualizacionServicio')).default;
+      const info = await actualizacionServicio.verificarActualizacion();
+      
+      console.log('Info de actualización:', info);
+      
+      // TEMPORAL: Para pruebas, descomentar la siguiente línea para forzar mostrar el modal
+      // setMostrarModalDescarga(true);
+      
+      // Solo mostrar el modal si hay una actualización disponible
+      if (info.hayActualizacion) {
+        setTimeout(() => {
+          console.log('¡Actualización disponible! Mostrando modal...');
+          setMostrarModalDescarga(true);
+        }, 3000);
+      } else {
+        console.log('No hay actualizaciones disponibles. Versión actual:', info.versionActual);
+      }
+    } catch (error) {
+      console.error('Error verificando actualización:', error);
+    }
+  };
 
   // Actualizar fecha y hora cada segundo
   useEffect(() => {
@@ -458,6 +487,12 @@ export const NuevaInicioPantalla = () => {
 
   return (
     <View style={styles.container}>
+      {/* Modal de Descarga APK */}
+      <ModalDescargaAPK 
+        visible={mostrarModalDescarga} 
+        onClose={() => setMostrarModalDescarga(false)}
+      />
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
