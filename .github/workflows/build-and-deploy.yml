@@ -60,19 +60,17 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       
       # 8. Crear Release en GitHub
-      - name: Delete existing release if exists
-        continue-on-error: true
-        run: |
-          gh release delete v${{ steps.version.outputs.VERSION }} --yes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
           name: Version ${{ steps.version.outputs.VERSION }}
           files: ./iptv-app/app.apk
+          draft: false
+          prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: false
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
