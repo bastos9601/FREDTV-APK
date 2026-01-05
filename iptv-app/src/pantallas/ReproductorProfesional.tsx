@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,21 @@ import {
   ActivityIndicator,
   Animated,
   Alert,
+  Modal,
+  ScrollView,
+  FlatList,
+  Pressable,
+  Image,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { COLORS } from '../utils/constantes';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as Brightness from 'expo-brightness';
 import { guardarProgreso, obtenerProgreso, ProgresoVideo } from '../utils/progresoStorage';
+import iptvServicio from '../servicios/iptvServicio';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,12 +43,127 @@ export const ReproductorProfesional = () => {
   const [bloqueado, setBloqueado] = useState(false);
   const [progresoRecuperado, setProgresoRecuperado] = useState(false);
   const [posicionInicialAplicada, setPosicionInicialAplicada] = useState(false);
+  const [mostrarSiguienteEpisodio, setMostrarSiguienteEpisodio] = useState(false);
+  const [siguienteEpisodio, setSiguienteEpisodio] = useState<any>(null);
+  const [cuentaRegresiva, setCuentaRegresiva] = useState(10);
+  const [modalEpisodios, setModalEpisodios] = useState(false);
+  const [episodiosSerie, setEpisodiosSerie] = useState<any>({});
+  const [temporadaModal, setTemporadaModal] = useState<string>(temporada || '1');
+  const [cargandoEpisodios, setCargandoEpisodios] = useState(false);
+  const [modalCanales, setModalCanales] = useState(false);
+  const [canalesTv, setCanalesTv] = useState<any[]>([]);
+  const [canalesFiltrados, setCanalesFiltrados] = useState<any[]>([]);
+  const [categoriasTv, setCategoriasTv] = useState<any[]>([]);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string>('all');
+  const [cargandoCanales, setCargandoCanales] = useState(false);
+  const [modalConfiguracion, setModalConfiguracion] = useState(false);
+  const [brillo, setBrillo] = useState(0.5);
+  const [brilloOriginal, setBrilloOriginal] = useState(0.5);
+  const [pistasAudio, setPistasAudio] = useState<any[]>([]);
+  const [pistaAudioSeleccionada, setPistaAudioSeleccionada] = useState<number>(0);
+  const barraRef = useRef<View>(null);
   const fadeAnim = useState(new Animated.Value(1))[0];
 
   const player = useVideoPlayer(url, (player) => {
     player.play();
     player.volume = volumen;
   });
+
+  // Guardar y restaurar brillo original
+  useEffect(() => {
+    const obtenerBrilloInicial = async () => {
+      try {
+        const { status } = await Brightness.requestPermissionsAsync();
+        if (status === 'granted') {
+          const brilloActual = await Brightness.getBrightnessAsync();
+          setBrilloOriginal(brilloActual);
+          setBrillo(brilloActual);
+        }
+      } catch (error) {
+        console.error('Error al obtener brillo:', error);
+      }
+    };
+
+    obtenerBrilloInicial();
+
+    // Restaurar brillo al salir
+    return () => {
+      Brightness.setBrightnessAsync(brilloOriginal).catch(console.error);
+    };
+  }, []);
+
+  // Obtener pistas de audio disponibles
+  useEffect(() => {
+    if (player) {
+      try {
+        // expo-video maneja las pistas de audio automáticamente
+        // Aquí podríamos obtener las pistas disponibles si la API lo permite
+        const audioTracks = player.audioTracks || [];
+        setPistasAudio(audioTracks);
+      } catch (error) {
+        console.error('Error al obtener pistas de audio:', error);
+      }
+    }
+  }, [player]);
+
+  // Rotar pantalla a horizontal automáticamente al entrar
+  useEffect(() => {
+    const rotarPantalla = async () => {
+      try {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        setPantallaCompleta(true);
+      } catch (error) {
+        console.error('Error al rotar pantalla:', error);
+      }
+    };
+
+    rotarPantalla();
+
+    // Volver a vertical al salir
+    return () => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT).catch(console.error);
+    };
+  }, []);
+
+  // Cargar información del siguiente episodio
+  useEffect(() => {
+    if (serie && temporada && episodio) {
+      cargarSiguienteEpisodio();
+    }
+  }, [serie, temporada, episodio]);
+
+  // Auto-reproducir siguiente episodio cuando la cuenta regresiva llegue a 0
+  useEffect(() => {
+    if (mostrarSiguienteEpisodio && cuentaRegresiva <= 0 && siguienteEpisodio) {
+      reproducirSiguienteEpisodio();
+    }
+  }, [cuentaRegresiva, mostrarSiguienteEpisodio, siguienteEpisodio]);
+
+  const cargarSiguienteEpisodio = async () => {
+    try {
+      const info = await iptvServicio.getSeriesInfo(serieId);
+      if (info.episodes && info.episodes[temporada]) {
+        const episodiosTemporada = info.episodes[temporada];
+        const siguienteEp = episodiosTemporada.find((ep: any) => ep.episode_num === parseInt(episodio) + 1);
+        
+        if (siguienteEp) {
+          setSiguienteEpisodio(siguienteEp);
+        } else {
+          // Buscar primer episodio de la siguiente temporada
+          const siguienteTemp = (parseInt(temporada) + 1).toString();
+          if (info.episodes[siguienteTemp] && info.episodes[siguienteTemp].length > 0) {
+            setSiguienteEpisodio({
+              ...info.episodes[siguienteTemp][0],
+              esSiguienteTemporada: true,
+              temporada: siguienteTemp
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error al cargar siguiente episodio:', error);
+    }
+  };
 
   useEffect(() => {
     // Listener para detectar cuando el video está listo
@@ -128,11 +251,37 @@ export const ReproductorProfesional = () => {
             setCargando(false);
           }
 
-          // Guardar progreso cada 10 segundos (solo si no es TV en vivo)
-          if (!esTvEnVivo && duration > 0 && currentTime > 0) {
+          // Mostrar siguiente episodio cuando falten 30 segundos
+          if (serie && siguienteEpisodio && duration > 0 && !esTvEnVivo) {
+            const tiempoRestante = duration - currentTime;
+            if (tiempoRestante <= 30 && tiempoRestante > 0 && !mostrarSiguienteEpisodio) {
+              setMostrarSiguienteEpisodio(true);
+              setCuentaRegresiva(Math.floor(tiempoRestante));
+            }
+            if (mostrarSiguienteEpisodio && tiempoRestante > 0) {
+              setCuentaRegresiva(Math.floor(tiempoRestante));
+            }
+          }
+        } catch (error) {
+          // Player ya fue liberado, ignorar
+        }
+      }
+    }, 1000); // Actualizar cada segundo para la cuenta regresiva
+
+    return () => clearInterval(interval);
+  }, [player, cargando, esTvEnVivo, siguienteEpisodio, mostrarSiguienteEpisodio, serie]);
+
+  // Guardar progreso periódicamente
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (player && !esTvEnVivo) {
+        try {
+          const currentTime = player.currentTime;
+          const duration = player.duration;
+          
+          if (duration > 0 && currentTime > 0) {
             const porcentaje = (currentTime / duration) * 100;
             
-            // Guardar progreso
             const progreso: ProgresoVideo = {
               id: generarIdVideo(),
               titulo,
@@ -154,10 +303,10 @@ export const ReproductorProfesional = () => {
           // Player ya fue liberado, ignorar
         }
       }
-    }, 10000);
+    }, 10000); // Guardar cada 10 segundos
 
     return () => clearInterval(interval);
-  }, [player, cargando, esTvEnVivo, titulo, streamId, serieId, temporada, episodio]);
+  }, [player, esTvEnVivo, titulo, streamId, serieId, temporada, episodio, serie]);
 
   // Guardar progreso al salir
   useEffect(() => {
@@ -188,9 +337,10 @@ export const ReproductorProfesional = () => {
 
   useEffect(() => {
     if (mostrarControles && !bloqueado) {
+      // Animación rápida de aparición (150ms en lugar de 300ms)
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 150,
         useNativeDriver: true,
       }).start();
 
@@ -214,7 +364,14 @@ export const ReproductorProfesional = () => {
 
   const toggleControles = () => {
     if (!bloqueado) {
-      setMostrarControles(!mostrarControles);
+      if (!mostrarControles) {
+        // Mostrar controles instantáneamente
+        fadeAnim.setValue(1);
+        setMostrarControles(true);
+      } else {
+        // Ocultar con animación suave
+        ocultarControles();
+      }
     }
   };
 
@@ -231,15 +388,97 @@ export const ReproductorProfesional = () => {
     }
   };
 
-  const abrirSelectorEpisodios = () => {
+  const abrirSelectorEpisodios = async () => {
     if (serie) {
-      (navigation as any).navigate('DetallesSerie', { serie });
+      setModalEpisodios(true);
+      setCargandoEpisodios(true);
+      try {
+        const info = await iptvServicio.getSeriesInfo(serieId);
+        if (info.episodes) {
+          setEpisodiosSerie(info.episodes);
+          setTemporadaModal(temporada || Object.keys(info.episodes)[0]);
+        }
+      } catch (error) {
+        Alert.alert('Error', 'No se pudieron cargar los episodios');
+      } finally {
+        setCargandoEpisodios(false);
+      }
     }
   };
 
-  const volverACanales = () => {
-    // Volver a la pantalla de TV en vivo
-    navigation.goBack();
+  const cerrarModalEpisodios = () => {
+    setModalEpisodios(false);
+  };
+
+  const seleccionarEpisodio = (episodio: any) => {
+    const url = iptvServicio.getSeriesStreamUrl(
+      episodio.id,
+      episodio.container_extension
+    );
+
+    setModalEpisodios(false);
+    
+    navigation.replace('Reproductor', {
+      url,
+      titulo: `${serie.name} - T${temporadaModal}E${episodio.episode_num} - ${episodio.title}`,
+      serie: serie,
+      temporada: temporadaModal,
+      episodio: episodio.episode_num,
+      serieId: serieId,
+      streamId: episodio.id,
+    });
+  };
+
+  const volverACanales = async () => {
+    // Abrir modal de canales
+    setModalCanales(true);
+    setCargandoCanales(true);
+    try {
+      const [canales, categorias] = await Promise.all([
+        iptvServicio.getLiveStreams(),
+        iptvServicio.getLiveCategories(),
+      ]);
+      
+      setCanalesTv(canales);
+      setCanalesFiltrados(canales);
+      setCategoriasTv([
+        { category_id: 'all', category_name: 'Todos', parent_id: 0 },
+        ...categorias
+      ]);
+      setCategoriaSeleccionada('all');
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar los canales');
+    } finally {
+      setCargandoCanales(false);
+    }
+  };
+
+  const filtrarCanalesPorCategoria = (categoriaId: string) => {
+    setCategoriaSeleccionada(categoriaId);
+    
+    if (categoriaId === 'all') {
+      setCanalesFiltrados(canalesTv);
+    } else {
+      const filtrados = canalesTv.filter(canal => canal.category_id === categoriaId);
+      setCanalesFiltrados(filtrados);
+    }
+  };
+
+  const cerrarModalCanales = () => {
+    setModalCanales(false);
+  };
+
+  const seleccionarCanal = (canal: any) => {
+    const url = iptvServicio.getLiveStreamUrl(canal.stream_id, canal.container_extension);
+    
+    setModalCanales(false);
+    
+    navigation.replace('Reproductor', {
+      url,
+      titulo: canal.name,
+      esTvEnVivo: true,
+      streamId: canal.stream_id,
+    });
   };
 
   const toggleReproduccion = () => {
@@ -278,6 +517,36 @@ export const ReproductorProfesional = () => {
     setPantallaCompleta(!pantallaCompleta);
   };
 
+  const cambiarBrillo = async (nuevoBrillo: number) => {
+    try {
+      setBrillo(nuevoBrillo);
+      await Brightness.setBrightnessAsync(nuevoBrillo);
+    } catch (error) {
+      console.error('Error al cambiar brillo:', error);
+    }
+  };
+
+  const abrirModalConfiguracion = () => {
+    setModalConfiguracion(true);
+  };
+
+  const cerrarModalConfiguracion = () => {
+    setModalConfiguracion(false);
+  };
+
+  const cambiarPistaAudio = (index: number) => {
+    try {
+      setPistaAudioSeleccionada(index);
+      // expo-video maneja el cambio de pista automáticamente
+      if (player && player.audioTracks && player.audioTracks[index]) {
+        // Aquí se cambiaría la pista si la API lo permite
+        console.log('Cambiando a pista de audio:', index);
+      }
+    } catch (error) {
+      console.error('Error al cambiar pista de audio:', error);
+    }
+  };
+
   const formatearTiempo = (segundos: number) => {
     const mins = Math.floor(segundos / 60);
     const secs = Math.floor(segundos % 60);
@@ -296,6 +565,44 @@ export const ReproductorProfesional = () => {
       const nuevaPosicion = (porcentaje / 100) * duracion;
       player.currentTime = nuevaPosicion;
     }
+  };
+
+  // Manejar toque en la barra de progreso
+  const manejarToqueBarra = (event: any) => {
+    if (!barraRef.current || duracion === 0 || !player) return;
+
+    barraRef.current.measure((fx, fy, width, height, px, py) => {
+      const touchX = event.nativeEvent.pageX - px;
+      const porcentaje = Math.max(0, Math.min(100, (touchX / width) * 100));
+      const nuevaPosicion = (porcentaje / 100) * duracion;
+      
+      player.currentTime = nuevaPosicion;
+      setPosicion(nuevaPosicion);
+    });
+  };
+
+  const reproducirSiguienteEpisodio = () => {
+    if (!siguienteEpisodio) return;
+
+    const tempActual = siguienteEpisodio.esSiguienteTemporada ? siguienteEpisodio.temporada : temporada;
+    const url = iptvServicio.getSeriesStreamUrl(
+      siguienteEpisodio.id,
+      siguienteEpisodio.container_extension
+    );
+
+    navigation.replace('Reproductor', {
+      url,
+      titulo: `${serie.name} - T${tempActual}E${siguienteEpisodio.episode_num} - ${siguienteEpisodio.title}`,
+      serie: serie,
+      temporada: tempActual,
+      episodio: siguienteEpisodio.episode_num,
+      serieId: serieId,
+      streamId: siguienteEpisodio.id,
+    });
+  };
+
+  const cancelarSiguienteEpisodio = () => {
+    setMostrarSiguienteEpisodio(false);
   };
 
   return (
@@ -353,6 +660,43 @@ export const ReproductorProfesional = () => {
             <Ionicons name="lock-closed" size={40} color={COLORS.primary} />
             <Text style={styles.bloqueoTexto}>Pantalla bloqueada</Text>
             <Text style={styles.bloqueoSubtexto}>Toca el candado para desbloquear</Text>
+          </View>
+        )}
+
+        {/* Siguiente Episodio */}
+        {mostrarSiguienteEpisodio && siguienteEpisodio && (
+          <View style={styles.siguienteEpisodioContainer}>
+            <View style={styles.siguienteEpisodioCard}>
+              <View style={styles.siguienteEpisodioHeader}>
+                <Text style={styles.siguienteEpisodioTitulo}>Siguiente episodio</Text>
+                <TouchableOpacity onPress={cancelarSiguienteEpisodio}>
+                  <Ionicons name="close" size={24} color={COLORS.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={styles.siguienteEpisodioInfo}>
+                {siguienteEpisodio.esSiguienteTemporada 
+                  ? `Temporada ${siguienteEpisodio.temporada} - Episodio ${siguienteEpisodio.episode_num}`
+                  : `Episodio ${siguienteEpisodio.episode_num}`
+                }
+              </Text>
+              <Text style={styles.siguienteEpisodioNombre} numberOfLines={2}>
+                {siguienteEpisodio.title}
+              </Text>
+
+              <View style={styles.siguienteEpisodioAcciones}>
+                <Text style={styles.cuentaRegresivaTexto}>
+                  Reproduciendo en {cuentaRegresiva}s
+                </Text>
+                <TouchableOpacity 
+                  style={styles.botonReproducirAhora}
+                  onPress={reproducirSiguienteEpisodio}
+                >
+                  <Ionicons name="play" size={20} color="#FFF" />
+                  <Text style={styles.botonReproducirTexto}>Reproducir ahora</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         )}
 
@@ -434,14 +778,23 @@ export const ReproductorProfesional = () => {
             <View style={styles.footer}>
               {/* Barra de Progreso */}
               <View style={styles.progresoContainer}>
-                <Text style={styles.tiempo}>{formatearTiempo(posicion)}</Text>
-                <View style={styles.barraPrincipal}>
+                <Text style={styles.tiempo}>
+                  {formatearTiempo(posicion)}
+                </Text>
+                <Pressable 
+                  ref={barraRef}
+                  style={styles.barraPrincipal}
+                  onPress={manejarToqueBarra}
+                >
                   <View style={styles.barraFondo}>
                     <View
-                      style={[styles.barraProgreso, { width: `${calcularProgreso()}%` }]}
+                      style={[
+                        styles.barraProgreso, 
+                        { width: `${calcularProgreso()}%` }
+                      ]}
                     />
                   </View>
-                </View>
+                </Pressable>
                 <Text style={styles.tiempo}>
                   {duracion > 0 ? formatearTiempo(duracion) : '--:--'}
                 </Text>
@@ -465,7 +818,10 @@ export const ReproductorProfesional = () => {
                 </View>
 
                 <View style={styles.controlesDerecha}>
-                  <TouchableOpacity style={styles.botonInferior}>
+                  <TouchableOpacity 
+                    style={styles.botonInferior}
+                    onPress={abrirModalConfiguracion}
+                  >
                     <Ionicons name="settings-outline" size={24} color="#FFF" />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -484,6 +840,358 @@ export const ReproductorProfesional = () => {
           </Animated.View>
         )}
       </TouchableOpacity>
+
+      {/* Modal de Episodios Estilo Netflix */}
+      <Modal
+        visible={modalEpisodios}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={cerrarModalEpisodios}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Header del Modal */}
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitulo}>{serie?.name}</Text>
+                <Text style={styles.modalSubtitulo}>Selecciona un episodio</Text>
+              </View>
+              <TouchableOpacity onPress={cerrarModalEpisodios} style={styles.modalBotonCerrar}>
+                <Ionicons name="close" size={32} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Selector de Temporadas */}
+            <View style={styles.modalTemporadas}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.modalTemporadasScroll}
+              >
+                {Object.keys(episodiosSerie).sort((a, b) => parseInt(a) - parseInt(b)).map((temp) => (
+                  <TouchableOpacity
+                    key={temp}
+                    style={[
+                      styles.modalTemporadaBtn,
+                      temp === temporadaModal && styles.modalTemporadaBtnActiva
+                    ]}
+                    onPress={() => setTemporadaModal(temp)}
+                  >
+                    <Text style={[
+                      styles.modalTemporadaTexto,
+                      temp === temporadaModal && styles.modalTemporadaTextoActivo
+                    ]}>
+                      Temporada {temp}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Lista de Episodios */}
+            {cargandoEpisodios ? (
+              <View style={styles.modalCargando}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+              </View>
+            ) : (
+              <FlatList
+                data={episodiosSerie[temporadaModal] || []}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalEpisodiosLista}
+                renderItem={({ item, index }) => {
+                  const esActual = temporadaModal === temporada && item.episode_num === parseInt(episodio);
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.modalEpisodioItem,
+                        esActual && styles.modalEpisodioItemActivo
+                      ]}
+                      onPress={() => seleccionarEpisodio(item)}
+                    >
+                      <View style={styles.modalEpisodioNumero}>
+                        <Text style={styles.modalEpisodioNumeroTexto}>
+                          {item.episode_num}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.modalEpisodioInfo}>
+                        <View style={styles.modalEpisodioTituloContainer}>
+                          <Text style={styles.modalEpisodioTitulo} numberOfLines={1}>
+                            {item.title || `Episodio ${item.episode_num}`}
+                          </Text>
+                          {esActual && (
+                            <View style={styles.modalReproduciendoBadge}>
+                              <Ionicons name="play" size={12} color="#FFF" />
+                              <Text style={styles.modalReproduciendoTexto}>Reproduciendo</Text>
+                            </View>
+                          )}
+                        </View>
+                        
+                        {item.info?.duration && (
+                          <Text style={styles.modalEpisodoDuracion}>
+                            {item.info.duration}
+                          </Text>
+                        )}
+                        
+                        {item.info?.plot && (
+                          <Text style={styles.modalEpisodioDescripcion} numberOfLines={2}>
+                            {item.info.plot}
+                          </Text>
+                        )}
+                      </View>
+
+                      <Ionicons 
+                        name={esActual ? "checkmark-circle" : "play-circle"} 
+                        size={32} 
+                        color={esActual ? COLORS.primary : COLORS.textSecondary} 
+                      />
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Canales de TV */}
+      <Modal
+        visible={modalCanales}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={cerrarModalCanales}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Header del Modal */}
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitulo}>Canales de TV</Text>
+                <Text style={styles.modalSubtitulo}>
+                  {categoriaSeleccionada === 'all' 
+                    ? `${canalesFiltrados.length} canales` 
+                    : `${canalesFiltrados.length} canales en esta categoría`}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={cerrarModalCanales} style={styles.modalBotonCerrar}>
+                <Ionicons name="close" size={32} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Selector de Categorías */}
+            <View style={styles.modalTemporadas}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.modalTemporadasScroll}
+              >
+                {categoriasTv.map((cat) => {
+                  const isSelected = cat.category_id === categoriaSeleccionada;
+                  const cantidadCanales = cat.category_id === 'all' 
+                    ? canalesTv.length 
+                    : canalesTv.filter(c => c.category_id === cat.category_id).length;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={cat.category_id}
+                      style={[
+                        styles.modalTemporadaBtn,
+                        isSelected && styles.modalTemporadaBtnActiva
+                      ]}
+                      onPress={() => filtrarCanalesPorCategoria(cat.category_id)}
+                    >
+                      <Text style={[
+                        styles.modalTemporadaTexto,
+                        isSelected && styles.modalTemporadaTextoActivo
+                      ]}>
+                        {cat.category_name}
+                      </Text>
+                      <Text style={[
+                        styles.modalCategoriaCantidad,
+                        isSelected && styles.modalCategoriaCantidadActiva
+                      ]}>
+                        {cantidadCanales}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Lista de Canales */}
+            {cargandoCanales ? (
+              <View style={styles.modalCargando}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+              </View>
+            ) : (
+              <FlatList
+                data={canalesFiltrados}
+                keyExtractor={(item) => item.stream_id.toString()}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalEpisodiosLista}
+                renderItem={({ item }) => {
+                  const esActual = streamId === item.stream_id;
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.modalCanalItem,
+                        esActual && styles.modalCanalItemActivo
+                      ]}
+                      onPress={() => seleccionarCanal(item)}
+                    >
+                      <View style={styles.modalCanalIcono}>
+                        {item.stream_icon ? (
+                          <Image 
+                            source={{ uri: item.stream_icon }}
+                            style={styles.modalCanalLogo}
+                            resizeMode="contain"
+                          />
+                        ) : (
+                          <Ionicons 
+                            name="tv" 
+                            size={24} 
+                            color={esActual ? COLORS.primary : COLORS.text} 
+                          />
+                        )}
+                      </View>
+                      
+                      <View style={styles.modalEpisodioInfo}>
+                        <View style={styles.modalEpisodioTituloContainer}>
+                          <Text style={styles.modalCanalNombre} numberOfLines={1}>
+                            {item.name}
+                          </Text>
+                          {esActual && (
+                            <View style={styles.modalReproduciendoBadge}>
+                              <Ionicons name="play" size={12} color="#FFF" />
+                              <Text style={styles.modalReproduciendoTexto}>En vivo</Text>
+                            </View>
+                          )}
+                        </View>
+                        
+                        {item.category_name && (
+                          <Text style={styles.modalEpisodoDuracion}>
+                            {item.category_name}
+                          </Text>
+                        )}
+                      </View>
+
+                      <Ionicons 
+                        name={esActual ? "checkmark-circle" : "play-circle"} 
+                        size={32} 
+                        color={esActual ? COLORS.primary : COLORS.textSecondary} 
+                      />
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Configuración */}
+      <Modal
+        visible={modalConfiguracion}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={cerrarModalConfiguracion}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Header del Modal */}
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitulo}>Configuración</Text>
+                <Text style={styles.modalSubtitulo}>Ajustes de reproducción</Text>
+              </View>
+              <TouchableOpacity onPress={cerrarModalConfiguracion} style={styles.modalBotonCerrar}>
+                <Ionicons name="close" size={32} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView 
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.modalConfiguracionScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Control de Brillo */}
+              <View style={styles.configuracionSeccion}>
+                <View style={styles.configuracionHeader}>
+                  <Ionicons name="sunny" size={24} color={COLORS.primary} />
+                  <Text style={styles.configuracionTitulo}>Brillo</Text>
+                </View>
+                <View style={styles.configuracionControl}>
+                  <Ionicons name="sunny-outline" size={20} color={COLORS.textSecondary} />
+                  <Slider
+                    style={styles.slider}
+                    minimumValue={0}
+                    maximumValue={1}
+                    value={brillo}
+                    onValueChange={cambiarBrillo}
+                    minimumTrackTintColor={COLORS.primary}
+                    maximumTrackTintColor="rgba(255,255,255,0.3)"
+                    thumbTintColor={COLORS.primary}
+                  />
+                  <Ionicons name="sunny" size={20} color={COLORS.textSecondary} />
+                  <Text style={styles.configuracionValor}>{Math.round(brillo * 100)}%</Text>
+                </View>
+              </View>
+
+              {/* Selector de Idioma de Audio */}
+              {pistasAudio.length > 0 && (
+                <View style={styles.configuracionSeccion}>
+                  <View style={styles.configuracionHeader}>
+                    <Ionicons name="language" size={24} color={COLORS.primary} />
+                    <Text style={styles.configuracionTitulo}>Idioma de Audio</Text>
+                  </View>
+                  {pistasAudio.map((pista, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.configuracionOpcion,
+                        pistaAudioSeleccionada === index && styles.configuracionOpcionActiva
+                      ]}
+                      onPress={() => cambiarPistaAudio(index)}
+                    >
+                      <Text style={[
+                        styles.configuracionOpcionTexto,
+                        pistaAudioSeleccionada === index && styles.configuracionOpcionTextoActivo
+                      ]}>
+                        {pista.language || `Audio ${index + 1}`}
+                      </Text>
+                      {pistaAudioSeleccionada === index && (
+                        <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Información del Video */}
+              <View style={styles.configuracionSeccion}>
+                <View style={styles.configuracionHeader}>
+                  <Ionicons name="information-circle" size={24} color={COLORS.primary} />
+                  <Text style={styles.configuracionTitulo}>Información</Text>
+                </View>
+                <View style={styles.configuracionInfo}>
+                  <Text style={styles.configuracionInfoTexto}>
+                    Duración: {formatearTiempo(duracion)}
+                  </Text>
+                  <Text style={styles.configuracionInfoTexto}>
+                    Posición: {formatearTiempo(posicion)}
+                  </Text>
+                  {serie && (
+                    <Text style={styles.configuracionInfoTexto}>
+                      Temporada {temporada} - Episodio {episodio}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -611,16 +1319,18 @@ const styles = StyleSheet.create({
   barraPrincipal: {
     flex: 1,
     marginHorizontal: 10,
+    paddingVertical: 10, // Área de toque más grande
+    justifyContent: 'center',
   },
   barraFondo: {
     height: 4,
     backgroundColor: 'rgba(255,255,255,0.3)',
     borderRadius: 2,
-    overflow: 'hidden',
   },
   barraProgreso: {
     height: '100%',
     backgroundColor: COLORS.primary,
+    borderRadius: 2,
   },
   controlesInferiores: {
     flexDirection: 'row',
@@ -673,5 +1383,324 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 5,
     textAlign: 'center',
+  },
+  siguienteEpisodioContainer: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    width: 320,
+    zIndex: 999,
+  },
+  siguienteEpisodioCard: {
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  siguienteEpisodioHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  siguienteEpisodioTitulo: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  siguienteEpisodioInfo: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    marginBottom: 5,
+  },
+  siguienteEpisodioNombre: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 15,
+  },
+  siguienteEpisodioAcciones: {
+    alignItems: 'center',
+  },
+  cuentaRegresivaTexto: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    marginBottom: 10,
+  },
+  botonReproducirAhora: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  botonReproducirTexto: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  // Estilos del Modal de Episodios
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '85%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 18,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitulo: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 3,
+  },
+  modalSubtitulo: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    opacity: 0.7,
+  },
+  modalBotonCerrar: {
+    padding: 5,
+  },
+  modalTemporadas: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  modalTemporadasScroll: {
+    paddingHorizontal: 15,
+    gap: 8,
+  },
+  modalTemporadaBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  modalTemporadaBtnActiva: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  modalTemporadaTexto: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  modalTemporadaTextoActivo: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+  modalCargando: {
+    padding: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalEpisodiosLista: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  modalEpisodioItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  modalEpisodioItemActivo: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(33, 150, 243, 0.08)',
+  },
+  modalEpisodioNumero: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  modalEpisodioNumeroTexto: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalEpisodioInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  modalEpisodioTituloContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  modalEpisodioTitulo: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    flex: 1,
+  },
+  modalReproduciendoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 6,
+  },
+  modalReproduciendoTexto: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+    marginLeft: 2,
+  },
+  modalEpisodoDuracion: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginBottom: 3,
+    opacity: 0.7,
+  },
+  modalEpisodioDescripcion: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    lineHeight: 16,
+    opacity: 0.7,
+  },
+  // Estilos específicos para modal de canales
+  modalCanalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  modalCanalItemActivo: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(33, 150, 243, 0.08)',
+  },
+  modalCanalIcono: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  modalCanalLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  modalCanalNombre: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    flex: 1,
+  },
+  modalCategoriaCantidad: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 1,
+    fontWeight: '500',
+  },
+  modalCategoriaCantidadActiva: {
+    color: 'rgba(255,255,255,0.9)',
+  },
+  // Estilos del modal de configuración
+  modalConfiguracionScroll: {
+    paddingBottom: 20,
+  },
+  configuracionSeccion: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  configuracionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  configuracionTitulo: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginLeft: 10,
+  },
+  configuracionControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  slider: {
+    flex: 1,
+    height: 40,
+  },
+  configuracionValor: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '600',
+    minWidth: 45,
+    textAlign: 'right',
+  },
+  configuracionOpcion: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: COLORS.card,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  configuracionOpcionActiva: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(33, 150, 243, 0.08)',
+  },
+  configuracionOpcionTexto: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  configuracionOpcionTextoActivo: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  configuracionInfo: {
+    gap: 8,
+  },
+  configuracionInfoTexto: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
   },
 });
