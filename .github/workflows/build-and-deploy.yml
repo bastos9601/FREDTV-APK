@@ -29,12 +29,9 @@ jobs:
         working-directory: ./iptv-app
         run: npm install
       
-      # 4. Setup Expo
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      # 4. Instalar EAS CLI
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
       
       # 5. Compilar APK
       - name: Build APK
