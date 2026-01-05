@@ -63,7 +63,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
+          tag_name: v${{ steps.version.outputs.VERSION }}-${{ github.run_number }}
           name: Version ${{ steps.version.outputs.VERSION }}
           files: ./iptv-app/app.apk
         env:
@@ -75,7 +75,7 @@ jobs:
           cat > config-remota-netlify-deploy/config.json << EOF
           {
             "versionActual": "${{ steps.version.outputs.VERSION }}",
-            "urlDescargaApk": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}/app.apk",
+            "urlDescargaApk": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}-${{ github.run_number }}/app.apk",
             "fechaActualizacion": "$(date +'%Y-%m-%d')"
           }
           EOF

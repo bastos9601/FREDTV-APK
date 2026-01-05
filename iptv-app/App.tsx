@@ -5,6 +5,7 @@ import { AuthProvider } from './src/contexto/AuthContext';
 import { NavegacionPrincipal } from './src/navegacion/NavegacionPrincipal';
 import configRemotaServicio from './src/servicios/configRemotaServicio';
 import iptvServicio from './src/servicios/iptvServicio';
+import actualizacionServicio from './src/servicios/actualizacionServicio';
 
 export default function App() {
   useEffect(() => {
@@ -22,7 +23,16 @@ export default function App() {
       }
     };
 
-    cargarConfiguracion();
+    // Verificar actualizaciones al iniciar
+    const inicializar = async () => {
+      await cargarConfiguracion();
+      // Esperar 2 segundos antes de verificar actualizaciones
+      setTimeout(() => {
+        actualizacionServicio.verificarActualizacion();
+      }, 2000);
+    };
+
+    inicializar();
   }, []);
 
   return (
