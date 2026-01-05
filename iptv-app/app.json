@@ -2,7 +2,7 @@
   "expo": {
     "name": "FRED TV",
     "slug": "fredtv-iptv",
-    "version": "2.0.5",
+    "version": "2.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -33,7 +33,7 @@
         "REQUEST_INSTALL_PACKAGES"
       ],
       "usesCleartextTraffic": true,
-      "versionCode": 7
+      "versionCode": 8
     },
     "web": {
       "favicon": "./assets/favicon.png"

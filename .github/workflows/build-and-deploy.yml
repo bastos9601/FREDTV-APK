@@ -46,12 +46,25 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          eas build --platform android --profile production --non-interactive | tee build-output.txt
-          BUILD_URL=$(grep -oE 'https://expo.dev/artifacts/[a-zA-Z0-9._/-]+' build-output.txt | head -1)
+          echo "Iniciando build..."
+          eas build --platform android --profile production --non-interactive 2>&1 | tee build-output.txt
+          
+          echo "Buscando URL del APK..."
+          BUILD_URL=$(grep -oE 'https://expo\.dev/artifacts/eas/[a-zA-Z0-9._/-]+\.apk' build-output.txt | head -1)
+          
+          if [ -z "$BUILD_URL" ]; then
+            echo "Intentando con patrón alternativo..."
+            BUILD_URL=$(grep -oE 'https://[^[:space:]]+\.apk' build-output.txt | head -1)
+          fi
+          
           if [ -z "$BUILD_URL" ]; then
             echo "❌ No se pudo obtener la URL del APK"
+            echo "Output del build:"
+            cat build-output.txt
             exit 1
           fi
+          
+          echo "✅ URL encontrada: $BUILD_URL"
           echo "BUILD_URL=$BUILD_URL" >> $GITHUB_OUTPUT
       
       # 6. Descargar APK generado
