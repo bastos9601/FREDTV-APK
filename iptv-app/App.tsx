@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { AuthProvider } from './src/contexto/AuthContext';
 import { PerfilProvider } from './src/contexto/PerfilContext';
 import { NavegacionPrincipal } from './src/navegacion/NavegacionPrincipal';
+import { ModalFlyerInicio } from './src/componentes/ModalFlyerInicio';
 import configRemotaServicio from './src/servicios/configRemotaServicio';
 import iptvServicio from './src/servicios/iptvServicio';
 import actualizacionServicio from './src/servicios/actualizacionServicio';
@@ -39,6 +40,7 @@ export default function App() {
   return (
     <AuthProvider>
       <PerfilProvider>
+        <ModalFlyerInicio numeroWhatsApp="+51936185088" />
         <NavegacionPrincipal />
         <StatusBar style="light" backgroundColor="#141414" />
       </PerfilProvider>
