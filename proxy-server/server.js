@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const IPTV_HOST = 'http://zona593.live:8080';
+const IPTV_HOST = 'http://gzytv.xyz:8880';
 const PORT = 3001;
 
 // Middleware para logging
