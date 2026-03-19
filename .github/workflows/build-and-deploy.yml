@@ -106,7 +106,7 @@ jobs:
           mkdir -p config-remota-netlify-deploy
           cat > config-remota-netlify-deploy/config.json << EOF
           {
-            "servidor": "http://gzytv.xyz:8880",
+            "servidor": "https://marvelous-druid-aefd91.netlify.app/",
             "servidores_backup": [
               "http://zona593.live:8080"
             ],
