@@ -4,6 +4,9 @@ import iptvServicio, { SeriesInfo, Category } from '../servicios/iptvServicio';
 import { COLORS } from '../utils/constantes';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { ModalDetallesSerie } from '../componentes/ModalDetallesSerie';
+import { useSupabase } from '../contexto/SupabaseContext';
+import { usePerfilActivo } from '../contexto/PerfilActivoContext';
 
 const POSTER_WIDTH = 110;
 const POSTER_HEIGHT = 165;
@@ -16,7 +19,11 @@ export const SeriesPantalla = () => {
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [mostrarCategorias, setMostrarCategorias] = useState(false);
+  const [mostrarModalDetalles, setMostrarModalDetalles] = useState(false);
+  const [serieSeleccionada, setSerieSeleccionada] = useState<SeriesInfo | null>(null);
   const navigation = useNavigation<any>();
+  const { usuarioId } = useSupabase();
+  const { perfilActivo } = usePerfilActivo();
 
   useEffect(() => {
     cargarDatos();
@@ -63,6 +70,11 @@ export const SeriesPantalla = () => {
   };
 
   const verSerie = (serie: SeriesInfo) => {
+    setSerieSeleccionada(serie);
+    setMostrarModalDetalles(true);
+  };
+
+  const reproducirSerie = (serie: SeriesInfo) => {
     const parentNavigation = navigation.getParent();
     if (parentNavigation) {
       parentNavigation.navigate('DetallesSerie', { serie });
@@ -237,6 +249,16 @@ export const SeriesPantalla = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de Detalles de Serie */}
+      <ModalDetallesSerie
+        visible={mostrarModalDetalles}
+        serie={serieSeleccionada}
+        onClose={() => setMostrarModalDetalles(false)}
+        onReproducir={reproducirSerie}
+        usuarioId={usuarioId}
+        perfilId={perfilActivo?.id}
+      />
     </View>
   );
 };

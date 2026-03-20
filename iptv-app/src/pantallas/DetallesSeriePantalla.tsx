@@ -13,6 +13,7 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import iptvServicio from '../servicios/iptvServicio';
+import tmdbServicio from '../servicios/tmdbServicio';
 import { COLORS } from '../utils/constantes';
 import { toggleFavorito, esFavorito, Favorito } from '../utils/favoritosStorage';
 import { useSupabase } from '../contexto/SupabaseContext';
@@ -45,15 +46,28 @@ export const DetallesSeriePantalla = () => {
   const [episodios, setEpisodios] = useState<{ [key: string]: Episodio[] }>({});
   const [temporadas, setTemporadas] = useState<any[]>([]);
   const [esFav, setEsFav] = useState(false);
+  const [cargandoTrailer, setCargandoTrailer] = useState(false);
 
   useEffect(() => {
     cargarDetalles();
     verificarFavorito();
+    buscarDescripcion();
   }, []);
 
   const verificarFavorito = async () => {
     const fav = await esFavorito(`serie_${serie.series_id}`);
     setEsFav(fav);
+  };
+
+  const buscarDescripcion = async () => {
+    try {
+      setCargandoTrailer(true);
+      await tmdbServicio.buscarPeliculaConTrailer(serie.name);
+    } catch (error) {
+      console.error('Error buscando descripción:', error);
+    } finally {
+      setCargandoTrailer(false);
+    }
   };
 
   const manejarFavorito = async () => {
@@ -202,6 +216,13 @@ export const DetallesSeriePantalla = () => {
           )}
         </View>
 
+        {cargandoTrailer && (
+          <View style={styles.loadingTrailer}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Cargando información...</Text>
+          </View>
+        )}
+
         {serie.plot && (
           <Text style={styles.descripcion}>{serie.plot}</Text>
         )}
@@ -331,6 +352,21 @@ const styles = StyleSheet.create({
   metaText: {
     color: COLORS.textSecondary,
     fontSize: 14,
+  },
+  loadingTrailer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.card,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginBottom: 15,
+  },
+  loadingText: {
+    color: COLORS.text,
+    fontSize: 14,
+    marginLeft: 10,
   },
   descripcion: {
     color: COLORS.text,

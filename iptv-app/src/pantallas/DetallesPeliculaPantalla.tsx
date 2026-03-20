@@ -7,10 +7,12 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import iptvServicio from '../servicios/iptvServicio';
+import tmdbServicio from '../servicios/tmdbServicio';
 import { COLORS } from '../utils/constantes';
 import { toggleFavorito, esFavorito, Favorito } from '../utils/favoritosStorage';
 import { useSupabase } from '../contexto/SupabaseContext';
@@ -25,14 +27,32 @@ export const DetallesPeliculaPantalla = () => {
   const { perfilActivo } = usePerfilActivo();
   const { pelicula } = route.params;
   const [esFav, setEsFav] = useState(false);
+  const [cargandoTrailer, setCargandoTrailer] = useState(false);
+  const [descripcion, setDescripcion] = useState<string>('');
 
   useEffect(() => {
     verificarFavorito();
-  }, []);
+    buscarDescripcion();
+  }, [pelicula.stream_id]);
 
   const verificarFavorito = async () => {
     const fav = await esFavorito(`pelicula_${pelicula.stream_id}`);
     setEsFav(fav);
+  };
+
+  const buscarDescripcion = async () => {
+    try {
+      setCargandoTrailer(true);
+      const { pelicula: peliculaTMDB } = await tmdbServicio.buscarPeliculaConTrailer(pelicula.name);
+      
+      if (peliculaTMDB && peliculaTMDB.overview) {
+        setDescripcion(peliculaTMDB.overview);
+      }
+    } catch (error) {
+      console.error('Error buscando descripción:', error);
+    } finally {
+      setCargandoTrailer(false);
+    }
   };
 
   const manejarFavorito = async () => {
@@ -127,6 +147,21 @@ export const DetallesPeliculaPantalla = () => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {cargandoTrailer && (
+          <View style={styles.loadingTrailer}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Cargando información...</Text>
+          </View>
+        )}
+
+        {/* Descripción */}
+        {descripcion && (
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionTitle}>Sinopsis</Text>
+            <Text style={styles.descriptionText}>{descripcion}</Text>
+          </View>
+        )}
 
         {/* Información Adicional */}
         <View style={styles.additionalInfo}>
@@ -239,7 +274,7 @@ const styles = StyleSheet.create({
   },
   botonesAccion: {
     flexDirection: 'row',
-    marginBottom: 30,
+    marginBottom: 15,
   },
   playButton: {
     flex: 1,
@@ -274,6 +309,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 10,
+  },
+  loadingTrailer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.card,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginBottom: 15,
+  },
+  loadingText: {
+    color: COLORS.text,
+    fontSize: 14,
+    marginLeft: 10,
+  },
+  descriptionContainer: {
+    backgroundColor: COLORS.card,
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  descriptionTitle: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  descriptionText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    lineHeight: 22,
   },
   additionalInfo: {
     backgroundColor: COLORS.card,

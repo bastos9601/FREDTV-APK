@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  Dimensions,
   FlatList,
   Alert,
   RefreshControl,
@@ -20,11 +19,9 @@ import { obtenerTodosLosProgresos, ProgresoVideo, eliminarProgreso, guardarProgr
 import { TarjetaContinuarViendo } from '../componentes/TarjetaContinuarViendo';
 import { TarjetaCanalTV } from '../componentes/TarjetaCanalTV';
 import { ModalDescargaAPK } from '../componentes/ModalDescargaAPK';
+import { BannerConTrailer } from '../componentes/BannerConTrailer';
+import { ModalDetallesPelicula } from '../componentes/ModalDetallesPelicula';
 import { usePerfilActivo } from '../contexto/PerfilActivoContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const { width } = Dimensions.get('window');
-const BANNER_HEIGHT = 200;
 const POSTER_WIDTH = 120;
 const POSTER_HEIGHT = 180;
 
@@ -40,6 +37,8 @@ export const NuevaInicioPantalla = () => {
   const [canalesPeru, setCanalesPeru] = useState<LiveStream[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [mostrarModalDescarga, setMostrarModalDescarga] = useState(false);
+  const [peliculaSeleccionada, setPeliculaSeleccionada] = useState<VodStream | null>(null);
+  const [mostrarModalDetalles, setMostrarModalDetalles] = useState(false);
   const navigation = useNavigation<any>();
   const { usuario, cerrarSesion } = useAuth();
   const { perfilActivo } = usePerfilActivo();
@@ -85,7 +84,7 @@ export const NuevaInicioPantalla = () => {
     return () => clearInterval(intervalo);
   }, []);
 
-  // Auto-deslizamiento del carrusel cada 4 segundos
+  // Auto-deslizamiento del carrusel cada 8 segundos
   useEffect(() => {
     if (peliculasDestacadas.length === 0) return;
 
@@ -93,7 +92,7 @@ export const NuevaInicioPantalla = () => {
       setBannerIndex((prevIndex) => 
         (prevIndex + 1) % peliculasDestacadas.length
       );
-    }, 4000); // Cambia cada 4 segundos
+    }, 8000); // Cambia cada 8 segundos
 
     return () => clearInterval(intervalo);
   }, [peliculasDestacadas.length]);
@@ -288,10 +287,8 @@ export const NuevaInicioPantalla = () => {
   };
 
   const verDetallesPelicula = (pelicula: VodStream) => {
-    const parentNavigation = navigation.getParent();
-    if (parentNavigation) {
-      parentNavigation.navigate('DetallesPelicula', { pelicula });
-    }
+    setPeliculaSeleccionada(pelicula);
+    setMostrarModalDetalles(true);
   };
 
   const reproducirPelicula = (pelicula: VodStream) => {
@@ -410,44 +407,12 @@ export const NuevaInicioPantalla = () => {
     const pelicula = peliculasDestacadas[bannerIndex];
     
     return (
-      <TouchableOpacity 
-        style={styles.banner}
+      <BannerConTrailer
+        pelicula={pelicula}
         onPress={() => verDetallesPelicula(pelicula)}
-      >
-        <Image
-          source={{ uri: pelicula.stream_icon }}
-          style={styles.bannerImage}
-          resizeMode="cover"
-        />
-        {/* Badge de "ESTRENO" */}
-        <View style={styles.estrenoBadge}>
-          <Ionicons name="star" size={14} color="#FFD700" />
-          <Text style={styles.estrenoText}>ESTRENO</Text>
-        </View>
-        <View style={styles.bannerGradient}>
-          <Text style={styles.bannerTitle}>{pelicula.name}</Text>
-          <View style={styles.bannerButtons}>
-            <TouchableOpacity 
-              style={styles.playButton}
-              onPress={() => verDetallesPelicula(pelicula)}
-            >
-              <Ionicons name="play" size={20} color="#000" />
-              <Text style={styles.playButtonText}>Ver Detalles</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.bannerDots}>
-          {peliculasDestacadas.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                index === bannerIndex && styles.dotActive,
-              ]}
-            />
-          ))}
-        </View>
-      </TouchableOpacity>
+        bannerIndex={bannerIndex}
+        totalBanners={peliculasDestacadas.length}
+      />
     );
   };
 
@@ -629,6 +594,16 @@ export const NuevaInicioPantalla = () => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Modal de Detalles de Película */}
+      <ModalDetallesPelicula
+        visible={mostrarModalDetalles}
+        pelicula={peliculaSeleccionada}
+        onClose={() => setMostrarModalDetalles(false)}
+        onReproducir={reproducirPelicula}
+        usuarioId={usuario?.username}
+        perfilId={perfilActivo?.id}
+      />
     </View>
   );
 };
@@ -687,83 +662,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  banner: {
-    width: width,
-    height: BANNER_HEIGHT,
-    marginBottom: 20,
-  },
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  estrenoBadge: {
-    position: 'absolute',
-    top: 15,
-    right: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#FFD700',
-  },
-  estrenoText: {
-    color: '#FFD700',
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginLeft: 5,
-  },
-  bannerGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 15,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  bannerTitle: {
-    color: COLORS.text,
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  bannerButtons: {
-    flexDirection: 'row',
-  },
-  playButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.text,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 5,
-    marginRight: 10,
-  },
-  playButtonText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  bannerDots: {
-    position: 'absolute',
-    bottom: 5,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    marginHorizontal: 2.5,
-  },
-  dotActive: {
-    backgroundColor: COLORS.primary,
   },
   section: {
     marginBottom: 25,

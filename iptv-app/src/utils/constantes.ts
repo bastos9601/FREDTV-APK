@@ -12,6 +12,11 @@ export const IPTV_CONFIG = {
   }
 };
 
+export const TMDB_CONFIG = {
+  API_KEY: '3dcbd9b3ad936919d46c1584590c9a6b',
+  BASE_URL: 'https://api.themoviedb.org/3',
+};
+
 export const COLORS = {
   primary: '#E50914',
   background: '#141414',

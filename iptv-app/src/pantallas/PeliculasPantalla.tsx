@@ -4,6 +4,9 @@ import iptvServicio, { VodStream, Category } from '../servicios/iptvServicio';
 import { COLORS } from '../utils/constantes';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { ModalDetallesPelicula } from '../componentes/ModalDetallesPelicula';
+import { useSupabase } from '../contexto/SupabaseContext';
+import { usePerfilActivo } from '../contexto/PerfilActivoContext';
 
 const POSTER_WIDTH = 110;
 const POSTER_HEIGHT = 165;
@@ -16,7 +19,11 @@ export const PeliculasPantalla = () => {
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [mostrarCategorias, setMostrarCategorias] = useState(false);
+  const [mostrarModalDetalles, setMostrarModalDetalles] = useState(false);
+  const [peliculaSeleccionada, setPeliculaSeleccionada] = useState<VodStream | null>(null);
   const navigation = useNavigation<any>();
+  const { usuarioId } = useSupabase();
+  const { perfilActivo } = usePerfilActivo();
 
   useEffect(() => {
     cargarDatos();
@@ -63,9 +70,23 @@ export const PeliculasPantalla = () => {
   };
 
   const verDetallesPelicula = (pelicula: VodStream) => {
+    setPeliculaSeleccionada(pelicula);
+    setMostrarModalDetalles(true);
+  };
+
+  const reproducirPelicula = (pelicula: VodStream) => {
+    const url = iptvServicio.getVodStreamUrl(
+      pelicula.stream_id,
+      pelicula.container_extension
+    );
     const parentNavigation = navigation.getParent();
     if (parentNavigation) {
-      parentNavigation.navigate('DetallesPelicula', { pelicula });
+      parentNavigation.navigate('Reproductor', {
+        url,
+        titulo: pelicula.name,
+        streamId: pelicula.stream_id,
+        imagen: pelicula.stream_icon,
+      });
     }
   };
 
@@ -237,6 +258,16 @@ export const PeliculasPantalla = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de Detalles de Película */}
+      <ModalDetallesPelicula
+        visible={mostrarModalDetalles}
+        pelicula={peliculaSeleccionada}
+        onClose={() => setMostrarModalDetalles(false)}
+        onReproducir={reproducirPelicula}
+        usuarioId={usuarioId}
+        perfilId={perfilActivo?.id}
+      />
     </View>
   );
 };
