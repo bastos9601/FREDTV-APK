@@ -22,6 +22,7 @@ import { ModalDescargaAPK } from '../componentes/ModalDescargaAPK';
 import { BannerConTrailer } from '../componentes/BannerConTrailer';
 import { ModalDetallesPelicula } from '../componentes/ModalDetallesPelicula';
 import { usePerfilActivo } from '../contexto/PerfilActivoContext';
+
 const POSTER_WIDTH = 120;
 const POSTER_HEIGHT = 180;
 
@@ -508,10 +509,10 @@ export const NuevaInicioPantalla = () => {
             <FlatList
               horizontal
               data={continuarViendo}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item: ProgresoVideo) => item.id}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalList}
-              renderItem={({ item }) => (
+              renderItem={({ item }: { item: ProgresoVideo }) => (
                 <TarjetaContinuarViendo
                   progreso={item}
                   onPress={() => continuarViendoVideo(item)}
@@ -533,8 +534,8 @@ export const NuevaInicioPantalla = () => {
           <FlatList
             horizontal
             data={peliculasRecientes}
-            keyExtractor={(item, index) => `pelicula-${item.stream_id}-${index}`}
-            renderItem={({ item }) => renderPosterItem(item, 'pelicula')}
+            keyExtractor={(item: VodStream, index: number) => `pelicula-${item.stream_id}-${index}`}
+            renderItem={({ item }: { item: VodStream }) => renderPosterItem(item, 'pelicula')}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}
           />
@@ -551,8 +552,8 @@ export const NuevaInicioPantalla = () => {
           <FlatList
             horizontal
             data={seriesPopulares}
-            keyExtractor={(item, index) => `serie-${item.series_id}-${index}`}
-            renderItem={({ item }) => renderPosterItem(item, 'serie')}
+            keyExtractor={(item: SeriesInfo, index: number) => `serie-${item.series_id}-${index}`}
+            renderItem={({ item }: { item: SeriesInfo }) => renderPosterItem(item, 'serie')}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}
           />
@@ -573,10 +574,10 @@ export const NuevaInicioPantalla = () => {
             <FlatList
               horizontal
               data={canalesPeru}
-              keyExtractor={(item, index) => `canal-${item.stream_id}-${index}`}
+              keyExtractor={(item: LiveStream, index: number) => `canal-${item.stream_id}-${index}`}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalList}
-              renderItem={({ item }) => (
+              renderItem={({ item }: { item: LiveStream }) => (
                 <TarjetaCanalTV
                   canal={item}
                   onPress={() => reproducirCanal(item)}

@@ -1,0 +1,76 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                    🚀 EJECUTAR FRED TV - PASO A PASO                      ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌─ OPCIÓN 1: AUTOMÁTICO (Recomendado) ──────────────────────────────────────┐
+│                                                                             │
+│  Windows:                                                                  │
+│  ────────                                                                  │
+│  1. Haz doble clic en: INSTALAR_Y_EJECUTAR.bat                             │
+│  2. Espera a que termine (puede tomar 5-10 minutos)                        │
+│  3. Se abrirá la app automáticamente                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ OPCIÓN 2: MANUAL ────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Paso 1: Instalar Expo CLI globalmente                                     │
+│  ──────────────────────────────────────────────────────────────────────    │
+│  npm install -g expo-cli                                                   │
+│                                                                             │
+│  Paso 2: Instalar dependencias del proyecto                                │
+│  ──────────────────────────────────────────────────────────────────────    │
+│  npm install                                                               │
+│                                                                             │
+│  Paso 3: Ejecutar la app                                                   │
+│  ──────────────────────────────────────────────────────────────────────    │
+│  npm start                                                                 │
+│                                                                             │
+│  Paso 4: Seleccionar plataforma                                            │
+│  ──────────────────────────────────────────────────────────────────────    │
+│  Presiona:                                                                 │
+│  • "a" para Android                                                        │
+│  • "i" para iOS                                                            │
+│  • "w" para Web                                                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ INFORMACIÓN IMPORTANTE ──────────────────────────────────────────────────┐
+│                                                                             │
+│  ✅ Versión: 2.7.6                                                         │
+│  ✅ Estado: Restaurado (sin optimizaciones)                                │
+│  ✅ Errores: Corregidos                                                    │
+│  ✅ Listo para: Ejecutar                                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ SI TIENES PROBLEMAS ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  Error: "expo command not found"                                           │
+│  Solución: npm install -g expo-cli                                         │
+│                                                                             │
+│  Error: "npm command not found"                                            │
+│  Solución: Instala Node.js desde https://nodejs.org                        │
+│                                                                             │
+│  Error: "Cannot find module..."                                            │
+│  Solución: npm install                                                     │
+│                                                                             │
+│  Error: "Port 19000 already in use"                                        │
+│  Solución: npm start -- --port 19001                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║  🎉 ¡LISTO!                                                               ║
+║                                                                            ║
+║  Opción 1: Haz doble clic en INSTALAR_Y_EJECUTAR.bat                      ║
+║  Opción 2: Sigue los pasos manuales arriba                                ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+Versión: 2.7.6
+Estado: ✅ Listo para Ejecutar
+Fecha: Marzo 2026
