@@ -62,45 +62,45 @@ ALTER TABLE progreso_capitulos ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Usuarios pueden ver su propio progreso"
   ON progreso_capitulos FOR SELECT
-  USING (usuario_id = current_user_id());
+  USING (usuario_id = auth.uid()::text);
 
 CREATE POLICY "Usuarios pueden insertar su propio progreso"
   ON progreso_capitulos FOR INSERT
-  WITH CHECK (usuario_id = current_user_id());
+  WITH CHECK (usuario_id = auth.uid()::text);
 
 CREATE POLICY "Usuarios pueden actualizar su propio progreso"
   ON progreso_capitulos FOR UPDATE
-  USING (usuario_id = current_user_id());
+  USING (usuario_id = auth.uid()::text);
 
 -- Favoritos
 ALTER TABLE favoritos ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Usuarios pueden ver sus favoritos"
   ON favoritos FOR SELECT
-  USING (usuario_id = current_user_id());
+  USING (usuario_id = auth.uid()::text);
 
 CREATE POLICY "Usuarios pueden insertar favoritos"
   ON favoritos FOR INSERT
-  WITH CHECK (usuario_id = current_user_id());
+  WITH CHECK (usuario_id = auth.uid()::text);
 
 CREATE POLICY "Usuarios pueden eliminar sus favoritos"
   ON favoritos FOR DELETE
-  USING (usuario_id = current_user_id());
+  USING (usuario_id = auth.uid()::text);
 
 -- Perfiles
 ALTER TABLE perfiles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Usuarios pueden ver sus perfiles"
   ON perfiles FOR SELECT
-  USING (usuario_id = current_user_id());
+  USING (usuario_id = auth.uid()::text);
 
 CREATE POLICY "Usuarios pueden crear perfiles"
   ON perfiles FOR INSERT
-  WITH CHECK (usuario_id = current_user_id());
+  WITH CHECK (usuario_id = auth.uid()::text);
 
 CREATE POLICY "Usuarios pueden eliminar sus perfiles"
   ON perfiles FOR DELETE
-  USING (usuario_id = current_user_id());
+  USING (usuario_id = auth.uid()::text);
 ```
 
 ---
