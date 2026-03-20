@@ -41,15 +41,15 @@ export default function App() {
 
   return (
     <SupabaseProvider>
-      <AuthProvider>
-        <PerfilProvider>
-          <PerfilActivoProvider>
+      <PerfilActivoProvider>
+        <AuthProvider>
+          <PerfilProvider>
             <ModalFlyerInicio numeroWhatsApp="+51936185088" />
             <NavegacionPrincipal />
             <StatusBar style="light" backgroundColor="#141414" />
-          </PerfilActivoProvider>
-        </PerfilProvider>
-      </AuthProvider>
+          </PerfilProvider>
+        </AuthProvider>
+      </PerfilActivoProvider>
     </SupabaseProvider>
   );
 }

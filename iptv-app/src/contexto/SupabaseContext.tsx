@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../servicios/supabaseServicio';
+import supabaseServicio from '../servicios/supabaseServicio';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import iptvServicio from '../servicios/iptvServicio';
 
 interface SupabaseContextType {
   usuarioId: string | null;
   cargando: boolean;
   iniciarSesion: (email: string, password: string) => Promise<boolean>;
+  iniciarSesionSupabase: (email: string, password: string) => Promise<boolean>;
   registrarse: (email: string, password: string) => Promise<boolean>;
   cerrarSesion: () => Promise<void>;
 }
@@ -28,17 +31,42 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (data.session?.user) {
         setUsuarioId(data.session.user.id);
         await AsyncStorage.setItem('usuarioId', data.session.user.id);
+        // Cargar credenciales guardadas
+        await cargarCredencialesGuardadas(data.session.user.id);
       } else {
         // Intentar recuperar del almacenamiento local
         const usuarioGuardado = await AsyncStorage.getItem('usuarioId');
         if (usuarioGuardado) {
           setUsuarioId(usuarioGuardado);
+          await cargarCredencialesGuardadas(usuarioGuardado);
         }
       }
     } catch (error) {
       console.error('Error verificando sesión:', error);
     } finally {
       setCargando(false);
+    }
+  };
+
+  const cargarCredencialesGuardadas = async (usuarioId: string) => {
+    try {
+      const credenciales = await supabaseServicio.obtenerCredenciales(usuarioId);
+      if (credenciales) {
+        // Restaurar credenciales en AsyncStorage
+        await AsyncStorage.setItem('@credenciales', JSON.stringify({
+          username: credenciales.username,
+          password: credenciales.password,
+        }));
+        await AsyncStorage.setItem('@usuario', JSON.stringify(credenciales.datos_usuario));
+        
+        // Configurar credenciales en el servicio IPTV
+        iptvServicio.setCredentials({
+          username: credenciales.username,
+          password: credenciales.password,
+        });
+      }
+    } catch (error) {
+      console.error('Error cargando credenciales guardadas:', error);
     }
   };
 
@@ -58,6 +86,8 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (data.user) {
         setUsuarioId(data.user.id);
         await AsyncStorage.setItem('usuarioId', data.user.id);
+        // Cargar credenciales guardadas
+        await cargarCredencialesGuardadas(data.user.id);
         return true;
       }
 
@@ -67,6 +97,19 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return false;
     } finally {
       setCargando(false);
+    }
+  };
+
+  const iniciarSesionSupabase = async (username: string, password: string): Promise<boolean> => {
+    try {
+      // Usar el username como ID único en lugar de email
+      // Esto permite usar solo usuario sin email
+      setUsuarioId(username);
+      await AsyncStorage.setItem('usuarioId', username);
+      return true;
+    } catch (error) {
+      console.error('Error en iniciarSesionSupabase:', error);
+      return false;
     }
   };
 
@@ -103,6 +146,8 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await supabase.auth.signOut();
       setUsuarioId(null);
       await AsyncStorage.removeItem('usuarioId');
+      await AsyncStorage.removeItem('@credenciales');
+      await AsyncStorage.removeItem('@usuario');
     } catch (error) {
       console.error('Error cerrando sesión:', error);
     }
@@ -114,6 +159,7 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         usuarioId,
         cargando,
         iniciarSesion,
+        iniciarSesionSupabase,
         registrarse,
         cerrarSesion,
       }}

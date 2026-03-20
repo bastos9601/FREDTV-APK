@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import iptvServicio from '../servicios/iptvServicio';
 import { COLORS } from '../utils/constantes';
 import { toggleFavorito, esFavorito, Favorito } from '../utils/favoritosStorage';
+import { useSupabase } from '../contexto/SupabaseContext';
+import { usePerfilActivo } from '../contexto/PerfilActivoContext';
 
 const { width } = Dimensions.get('window');
 
@@ -33,6 +35,8 @@ interface Episodio {
 export const DetallesSeriePantalla = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const { usuarioId } = useSupabase();
+  const { perfilActivo } = usePerfilActivo();
   const { serie } = route.params;
 
   const [cargando, setCargando] = useState(true);
@@ -63,7 +67,7 @@ export const DetallesSeriePantalla = () => {
       datos: serie,
     };
 
-    const nuevoEstado = await toggleFavorito(favorito);
+    const nuevoEstado = await toggleFavorito(favorito, usuarioId || undefined, perfilActivo?.id);
     setEsFav(nuevoEstado);
   };
 

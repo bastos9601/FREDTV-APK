@@ -25,12 +25,16 @@ import * as Brightness from 'expo-brightness';
 import { guardarProgreso, obtenerProgreso, ProgresoVideo } from '../utils/progresoStorage';
 import { toggleFavorito, esFavorito, Favorito } from '../utils/favoritosStorage';
 import iptvServicio from '../servicios/iptvServicio';
+import { useSupabase } from '../contexto/SupabaseContext';
+import { usePerfilActivo } from '../contexto/PerfilActivoContext';
 
 const { width, height } = Dimensions.get('window');
 
 export const ReproductorProfesional = () => {
   const route = useRoute<any>();
   const navigation = useNavigation();
+  const { usuarioId } = useSupabase();
+  const { perfilActivo } = usePerfilActivo();
   const { url, titulo, serie, temporada, episodio, esTvEnVivo, streamId, serieId, posicionInicial, imagen } = route.params;
   
   const [mostrarControles, setMostrarControles] = useState(true);
@@ -159,7 +163,7 @@ export const ReproductorProfesional = () => {
       datos: { url },
     };
 
-    const nuevoEstado = await toggleFavorito(favorito);
+    const nuevoEstado = await toggleFavorito(favorito, usuarioId || undefined, perfilActivo?.id);
     setEsFav(nuevoEstado);
   };
 
@@ -344,7 +348,7 @@ export const ReproductorProfesional = () => {
               imagen,
             };
             
-            guardarProgreso(progreso);
+            guardarProgreso(progreso, usuarioId || undefined, perfilActivo?.id);
           }
         } catch (error) {
           // Player ya fue liberado, ignorar
@@ -353,7 +357,7 @@ export const ReproductorProfesional = () => {
     }, 10000); // Guardar cada 10 segundos
 
     return () => clearInterval(interval);
-  }, [player, esTvEnVivo, titulo, streamId, serieId, temporada, episodio, serie]);
+  }, [player, esTvEnVivo, titulo, streamId, serieId, temporada, episodio, serie, usuarioId, perfilActivo?.id]);
 
   // Guardar progreso al salir
   useEffect(() => {
@@ -378,10 +382,10 @@ export const ReproductorProfesional = () => {
           imagen,
         };
         
-        guardarProgreso(progreso);
+        guardarProgreso(progreso, usuarioId || undefined, perfilActivo?.id);
       }
     };
-  }, [esTvEnVivo, duracion, posicion, titulo, streamId, serieId, temporada, episodio, url]);
+  }, [esTvEnVivo, duracion, posicion, titulo, streamId, serieId, temporada, episodio, url, usuarioId, perfilActivo?.id]);
 
   useEffect(() => {
     if (mostrarControles && !bloqueado) {

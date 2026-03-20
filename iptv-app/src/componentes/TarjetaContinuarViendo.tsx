@@ -82,7 +82,7 @@ export const TarjetaContinuarViendo: React.FC<TarjetaContinuarViendoProps> = ({
             onRemove();
           }}
         >
-          <Ionicons name="close-circle" size={20} color="rgba(255,255,255,0.9)" />
+          <Ionicons name="close-circle-sharp" size={24} color="#FF4444" />
         </TouchableOpacity>
       </TouchableOpacity>
       
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   percentageBadge: {
     position: 'absolute',
     top: 4,
-    right: 4,
+    left: 4,
     backgroundColor: 'rgba(0,0,0,0.8)',
     paddingHorizontal: 5,
     paddingVertical: 2,
@@ -167,11 +167,11 @@ const styles = StyleSheet.create({
   removeButton: {
     position: 'absolute',
     top: 4,
-    left: 4,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },

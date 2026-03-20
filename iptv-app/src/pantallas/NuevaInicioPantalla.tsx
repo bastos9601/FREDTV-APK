@@ -20,6 +20,7 @@ import { obtenerTodosLosProgresos, ProgresoVideo, eliminarProgreso, guardarProgr
 import { TarjetaContinuarViendo } from '../componentes/TarjetaContinuarViendo';
 import { TarjetaCanalTV } from '../componentes/TarjetaCanalTV';
 import { ModalDescargaAPK } from '../componentes/ModalDescargaAPK';
+import { usePerfilActivo } from '../contexto/PerfilActivoContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
@@ -41,6 +42,7 @@ export const NuevaInicioPantalla = () => {
   const [mostrarModalDescarga, setMostrarModalDescarga] = useState(false);
   const navigation = useNavigation<any>();
   const { usuario, cerrarSesion } = useAuth();
+  const { perfilActivo } = usePerfilActivo();
 
   useEffect(() => {
     cargarContenido();
@@ -204,7 +206,7 @@ export const NuevaInicioPantalla = () => {
 
   const cargarContinuarViendo = async () => {
     try {
-      const progresos = await obtenerTodosLosProgresos();
+      const progresos = await obtenerTodosLosProgresos(perfilActivo?.id);
       
       // Cargar películas y series para obtener las imágenes
       const [peliculas, series] = await Promise.all([
@@ -358,7 +360,7 @@ export const NuevaInicioPantalla = () => {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            await eliminarProgreso(progreso.id);
+            await eliminarProgreso(progreso.id, usuario?.username, perfilActivo?.id);
             // Recargar la lista
             await cargarContinuarViendo();
           },

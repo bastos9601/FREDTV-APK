@@ -17,7 +17,7 @@ import { DetallesPeliculaPantalla } from '../pantallas/DetallesPeliculaPantalla'
 import { DetallesSeriePantalla } from '../pantallas/DetallesSeriePantalla';
 import { ReproductorProfesional } from '../pantallas/ReproductorProfesional';
 import { useAuth } from '../contexto/AuthContext';
-import { usePerfil } from '../contexto/PerfilContext';
+import { usePerfilActivo } from '../contexto/PerfilActivoContext';
 import { COLORS } from '../utils/constantes';
 
 const Stack = createNativeStackNavigator();
@@ -87,7 +87,7 @@ const TabNavigator = () => {
 
 export const NavegacionPrincipal = () => {
   const { usuario, cargando } = useAuth();
-  const { perfilActivo } = usePerfil();
+  const { perfilActivo } = usePerfilActivo();
   const [mostrarSplash, setMostrarSplash] = useState(true);
 
   // Mostrar splash solo la primera vez que se carga la app

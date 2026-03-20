@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import supabaseServicio from '../servicios/supabaseServicio';
 
 export interface Favorito {
   id: string;
@@ -11,11 +12,13 @@ export interface Favorito {
   datos?: any; // Para guardar datos adicionales del item
 }
 
-const STORAGE_KEY = '@favoritos';
+const getStorageKey = (perfilId?: string) => {
+  return perfilId ? `@favoritos_${perfilId}` : '@favoritos';
+};
 
-export const agregarFavorito = async (favorito: Favorito): Promise<void> => {
+export const agregarFavorito = async (favorito: Favorito, usuarioId?: string, perfilId?: string): Promise<void> => {
   try {
-    const favoritos = await obtenerFavoritos();
+    const favoritos = await obtenerFavoritos(perfilId);
     
     // Verificar si ya existe
     const existe = favoritos.some(f => f.id === favorito.id);
@@ -24,25 +27,44 @@ export const agregarFavorito = async (favorito: Favorito): Promise<void> => {
     }
 
     favoritos.push(favorito);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(favoritos));
+    const storageKey = getStorageKey(perfilId);
+    await AsyncStorage.setItem(storageKey, JSON.stringify(favoritos));
+    
+    // Guardar en Supabase si hay usuarioId
+    if (usuarioId) {
+      await supabaseServicio.agregarFavorito({
+        usuario_id: usuarioId,
+        perfil_id: perfilId,
+        canal_id: favorito.id,
+        titulo: favorito.nombre,
+        imagen: favorito.imagen,
+        fecha_agregado: new Date().toISOString(),
+      });
+    }
   } catch (error) {
     console.error('Error al agregar favorito:', error);
   }
 };
 
-export const eliminarFavorito = async (id: string): Promise<void> => {
+export const eliminarFavorito = async (id: string, usuarioId?: string, perfilId?: string): Promise<void> => {
   try {
-    const favoritos = await obtenerFavoritos();
+    const favoritos = await obtenerFavoritos(perfilId);
     const nuevosFavoritos = favoritos.filter(f => f.id !== id);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nuevosFavoritos));
+    const storageKey = getStorageKey(perfilId);
+    await AsyncStorage.setItem(storageKey, JSON.stringify(nuevosFavoritos));
+    
+    // Eliminar de Supabase si hay usuarioId
+    if (usuarioId) {
+      await supabaseServicio.eliminarFavorito(usuarioId, id, perfilId);
+    }
   } catch (error) {
     console.error('Error al eliminar favorito:', error);
   }
 };
 
-export const esFavorito = async (id: string): Promise<boolean> => {
+export const esFavorito = async (id: string, perfilId?: string): Promise<boolean> => {
   try {
-    const favoritos = await obtenerFavoritos();
+    const favoritos = await obtenerFavoritos(perfilId);
     return favoritos.some(f => f.id === id);
   } catch (error) {
     console.error('Error al verificar favorito:', error);
@@ -50,9 +72,10 @@ export const esFavorito = async (id: string): Promise<boolean> => {
   }
 };
 
-export const obtenerFavoritos = async (): Promise<Favorito[]> => {
+export const obtenerFavoritos = async (perfilId?: string): Promise<Favorito[]> => {
   try {
-    const data = await AsyncStorage.getItem(STORAGE_KEY);
+    const storageKey = getStorageKey(perfilId);
+    const data = await AsyncStorage.getItem(storageKey);
     return data ? JSON.parse(data) : [];
   } catch (error) {
     console.error('Error al obtener favoritos:', error);
@@ -60,9 +83,9 @@ export const obtenerFavoritos = async (): Promise<Favorito[]> => {
   }
 };
 
-export const obtenerFavoritosPorTipo = async (tipo: 'pelicula' | 'serie' | 'canal'): Promise<Favorito[]> => {
+export const obtenerFavoritosPorTipo = async (tipo: 'pelicula' | 'serie' | 'canal', perfilId?: string): Promise<Favorito[]> => {
   try {
-    const favoritos = await obtenerFavoritos();
+    const favoritos = await obtenerFavoritos(perfilId);
     return favoritos.filter(f => f.tipo === tipo);
   } catch (error) {
     console.error('Error al obtener favoritos por tipo:', error);
@@ -70,15 +93,15 @@ export const obtenerFavoritosPorTipo = async (tipo: 'pelicula' | 'serie' | 'cana
   }
 };
 
-export const toggleFavorito = async (favorito: Favorito): Promise<boolean> => {
+export const toggleFavorito = async (favorito: Favorito, usuarioId?: string, perfilId?: string): Promise<boolean> => {
   try {
-    const esFav = await esFavorito(favorito.id);
+    const esFav = await esFavorito(favorito.id, perfilId);
     
     if (esFav) {
-      await eliminarFavorito(favorito.id);
+      await eliminarFavorito(favorito.id, usuarioId, perfilId);
       return false;
     } else {
-      await agregarFavorito(favorito);
+      await agregarFavorito(favorito, usuarioId, perfilId);
       return true;
     }
   } catch (error) {

@@ -13,12 +13,16 @@ import { Ionicons } from '@expo/vector-icons';
 import iptvServicio from '../servicios/iptvServicio';
 import { COLORS } from '../utils/constantes';
 import { toggleFavorito, esFavorito, Favorito } from '../utils/favoritosStorage';
+import { useSupabase } from '../contexto/SupabaseContext';
+import { usePerfilActivo } from '../contexto/PerfilActivoContext';
 
 const { width } = Dimensions.get('window');
 
 export const DetallesPeliculaPantalla = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const { usuarioId } = useSupabase();
+  const { perfilActivo } = usePerfilActivo();
   const { pelicula } = route.params;
   const [esFav, setEsFav] = useState(false);
 
@@ -42,7 +46,7 @@ export const DetallesPeliculaPantalla = () => {
       datos: pelicula,
     };
 
-    const nuevoEstado = await toggleFavorito(favorito);
+    const nuevoEstado = await toggleFavorito(favorito, usuarioId || undefined, perfilActivo?.id);
     setEsFav(nuevoEstado);
   };
 

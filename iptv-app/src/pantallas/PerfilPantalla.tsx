@@ -11,35 +11,88 @@ import {
   RefreshControl,
   Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../contexto/AuthContext';
 import { COLORS } from '../utils/constantes';
 import { obtenerFavoritos, eliminarFavorito, Favorito } from '../utils/favoritosStorage';
 import { obtenerTodosLosProgresos, ProgresoVideo, eliminarProgreso } from '../utils/progresoStorage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import iptvServicio from '../servicios/iptvServicio';
+import { SelectorPerfiles } from '../componentes/SelectorPerfiles';
+import { usePerfilActivo } from '../contexto/PerfilActivoContext';
+import { useSupabaseData } from '../hooks/useSupabaseData';
+import { ModalPIN } from '../componentes/ModalPIN';
 
 const { width } = Dimensions.get('window');
 
 export const PerfilPantalla = () => {
   const { usuario, cerrarSesion } = useAuth();
+  const { perfilActivo } = usePerfilActivo();
+  const { obtenerFavoritos: obtenerFavoritosSupabase, obtenerTodosProgresos: obtenerProgresosSupabase, usuarioId, actualizarPinPerfil } = useSupabaseData();
   const [favoritos, setFavoritos] = useState<Favorito[]>([]);
   const [continuarViendo, setContinuarViendo] = useState<ProgresoVideo[]>([]);
   const [pestanaActiva, setPestanaActiva] = useState<'favoritos' | 'continuar'>('favoritos');
   const [refreshing, setRefreshing] = useState(false);
+  const [mostrarSelectorPerfiles, setMostrarSelectorPerfiles] = useState(false);
+  const [mostrarModalPin, setMostrarModalPin] = useState(false);
   const navigation = useNavigation<any>();
 
   useFocusEffect(
     React.useCallback(() => {
       cargarDatos();
-    }, [])
+    }, [perfilActivo?.id, usuarioId])
   );
 
   const cargarDatos = async () => {
-    const favs = await obtenerFavoritos();
+    // Cargar favoritos: primero del local storage, luego de Supabase si hay usuarioId
+    let favs = await obtenerFavoritos(perfilActivo?.id);
+    
+    if (usuarioId && perfilActivo?.id) {
+      const favSupabase = await obtenerFavoritosSupabase(perfilActivo.id);
+      // Combinar y eliminar duplicados
+      const favMap = new Map();
+      favs.forEach(f => favMap.set(f.id, f));
+      favSupabase.forEach(f => {
+        if (!favMap.has(f.canal_id)) {
+          favMap.set(f.canal_id, {
+            id: f.canal_id,
+            tipo: 'pelicula' as const,
+            nombre: f.titulo,
+            imagen: f.imagen,
+            fecha: new Date(f.fecha_agregado).getTime(),
+          });
+        }
+      });
+      favs = Array.from(favMap.values());
+    }
+    
     setFavoritos(favs.sort((a, b) => b.fecha - a.fecha));
 
-    const progresos = await obtenerTodosLosProgresos();
+    // Cargar progresos: primero del local storage, luego de Supabase si hay usuarioId
+    let progresos = await obtenerTodosLosProgresos(perfilActivo?.id);
+    
+    if (usuarioId && perfilActivo?.id) {
+      const progSupabase = await obtenerProgresosSupabase(perfilActivo.id);
+      // Combinar y eliminar duplicados
+      const progMap = new Map();
+      progresos.forEach(p => progMap.set(p.id, p));
+      progSupabase.forEach(p => {
+        if (!progMap.has(p.capitulo_id)) {
+          progMap.set(p.capitulo_id, {
+            id: p.capitulo_id,
+            titulo: p.titulo,
+            url: '',
+            posicion: p.tiempo_actual,
+            duracion: p.duracion,
+            porcentaje: p.duracion > 0 ? (p.tiempo_actual / p.duracion) * 100 : 0,
+            fecha: new Date(p.fecha_actualizacion).getTime(),
+            tipo: 'episodio' as const,
+          });
+        }
+      });
+      progresos = Array.from(progMap.values());
+    }
+    
     setContinuarViendo(progresos.sort((a, b) => b.fecha - a.fecha).slice(0, 20));
   };
 
@@ -59,7 +112,7 @@ export const PerfilPantalla = () => {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            await eliminarFavorito(favorito.id);
+            await eliminarFavorito(favorito.id, undefined, perfilActivo?.id);
             cargarDatos();
           },
         },
@@ -104,7 +157,7 @@ export const PerfilPantalla = () => {
             text: 'Eliminar',
             style: 'destructive',
             onPress: async () => {
-              await eliminarProgreso(progreso.id);
+              await eliminarProgreso(progreso.id, undefined, perfilActivo?.id);
               cargarDatos();
             },
           },
@@ -186,7 +239,7 @@ export const PerfilPantalla = () => {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            await eliminarProgreso(progreso.id);
+            await eliminarProgreso(progreso.id, undefined, perfilActivo?.id);
             cargarDatos();
           },
         },
@@ -259,6 +312,14 @@ export const PerfilPantalla = () => {
           Expira: {usuario?.exp_date ? new Date(parseInt(String(usuario.exp_date)) * 1000).toLocaleDateString() : 'N/A'}
         </Text>
         
+        {/* Perfil Activo */}
+        {perfilActivo && (
+          <View style={styles.perfilActivoContainer}>
+            <MaterialCommunityIcons name="account-check" size={16} color={COLORS.primary} />
+            <Text style={styles.perfilActivoTexto}>{perfilActivo.nombre}</Text>
+          </View>
+        )}
+        
         {/* Barra de Conexiones */}
         <View style={styles.conexionesContainer}>
           <View style={styles.conexionesHeader}>
@@ -293,10 +354,28 @@ export const PerfilPantalla = () => {
           )}
         </View>
         
-        <TouchableOpacity style={styles.logoutButton} onPress={cerrarSesion}>
-          <Ionicons name="log-out-outline" size={20} color="#FFF" />
-          <Text style={styles.logoutText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
+        <View style={styles.botonesContainer}>
+          <TouchableOpacity 
+            style={[styles.boton, styles.botonPerfiles]} 
+            onPress={() => setMostrarSelectorPerfiles(true)}
+          >
+            <MaterialCommunityIcons name="account-multiple" size={18} color="#FFF" />
+            <Text style={styles.botonTexto}>Mis Perfiles</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.boton, styles.botonPin]} 
+            onPress={() => setMostrarModalPin(true)}
+          >
+            <MaterialCommunityIcons name={perfilActivo?.pin ? "lock" : "lock-open"} size={18} color="#FFF" />
+            <Text style={styles.botonTexto}>PIN</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.boton, styles.logoutButton]} onPress={cerrarSesion}>
+            <Ionicons name="log-out-outline" size={18} color="#FFF" />
+            <Text style={styles.botonTexto}>Cerrar Sesión</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Pestañas */}
@@ -410,6 +489,33 @@ export const PerfilPantalla = () => {
           )
         )}
       </View>
+
+      {/* Modal Selector de Perfiles */}
+      <SelectorPerfiles 
+        visible={mostrarSelectorPerfiles} 
+        onClose={() => setMostrarSelectorPerfiles(false)} 
+      />
+
+      {/* Modal PIN */}
+      <ModalPIN
+        visible={mostrarModalPin}
+        perfilNombre={perfilActivo?.nombre || 'Perfil'}
+        modo="crear"
+        onConfirm={async (pin) => {
+          try {
+            const actualizado = await actualizarPinPerfil(perfilActivo?.id || '', pin);
+            if (actualizado) {
+              setMostrarModalPin(false);
+              Alert.alert('Éxito', 'PIN actualizado correctamente');
+            } else {
+              Alert.alert('Error', 'No se pudo guardar el PIN');
+            }
+          } catch (error) {
+            Alert.alert('Error', 'Error al guardar el PIN');
+          }
+        }}
+        onCancel={() => setMostrarModalPin(false)}
+      />
     </View>
   );
 };
@@ -457,6 +563,22 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginVertical: 3,
   },
+  perfilActivoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  perfilActivoTexto: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
   conexionesContainer: {
     width: '100%',
     marginTop: 15,
@@ -501,20 +623,35 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: 'italic',
   },
-  logoutButton: {
+  botonesContainer: {
+    width: '100%',
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 25,
+    gap: 10,
     marginTop: 15,
   },
-  logoutText: {
+  boton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+  },
+  botonPerfiles: {
+    backgroundColor: COLORS.primary,
+  },
+  botonPin: {
+    backgroundColor: '#FFD700',
+  },
+  logoutButton: {
+    backgroundColor: '#EF4444',
+  },
+  botonTexto: {
     color: '#FFF',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: 'bold',
-    marginLeft: 8,
   },
   tabsContainer: {
     flexDirection: 'row',

@@ -4,12 +4,43 @@
 
 Ve a tu proyecto en Supabase y ejecuta estos SQL en el editor SQL:
 
-### 1. Tabla de Progreso de Capítulos
+### 1. Tabla de Usuarios IPTV (Credenciales)
+
+```sql
+CREATE TABLE usuarios_iptv (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  usuario_id TEXT NOT NULL UNIQUE,
+  username TEXT NOT NULL,
+  password TEXT NOT NULL,
+  datos_usuario JSONB,
+  fecha_creacion TIMESTAMP DEFAULT NOW(),
+  fecha_actualizacion TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_usuarios_iptv_usuario_id ON usuarios_iptv(usuario_id);
+
+ALTER TABLE usuarios_iptv ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Usuarios pueden ver sus credenciales"
+  ON usuarios_iptv FOR SELECT
+  USING (usuario_id = auth.uid()::text);
+
+CREATE POLICY "Usuarios pueden insertar sus credenciales"
+  ON usuarios_iptv FOR INSERT
+  WITH CHECK (usuario_id = auth.uid()::text);
+
+CREATE POLICY "Usuarios pueden actualizar sus credenciales"
+  ON usuarios_iptv FOR UPDATE
+  USING (usuario_id = auth.uid()::text);
+```
+
+### 2. Tabla de Progreso de Capítulos
 
 ```sql
 CREATE TABLE progreso_capitulos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id TEXT NOT NULL,
+  perfil_id UUID,
   canal_id TEXT NOT NULL,
   capitulo_id TEXT NOT NULL,
   titulo TEXT NOT NULL,
@@ -17,10 +48,11 @@ CREATE TABLE progreso_capitulos (
   duracion INTEGER DEFAULT 0,
   tiempo_actual INTEGER DEFAULT 0,
   fecha_actualizacion TIMESTAMP DEFAULT NOW(),
-  UNIQUE(usuario_id, canal_id, capitulo_id)
+  UNIQUE(usuario_id, perfil_id, canal_id, capitulo_id)
 );
 
 CREATE INDEX idx_progreso_usuario ON progreso_capitulos(usuario_id);
+CREATE INDEX idx_progreso_perfil ON progreso_capitulos(perfil_id);
 CREATE INDEX idx_progreso_canal ON progreso_capitulos(canal_id);
 ```
 
@@ -30,14 +62,16 @@ CREATE INDEX idx_progreso_canal ON progreso_capitulos(canal_id);
 CREATE TABLE favoritos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id TEXT NOT NULL,
+  perfil_id UUID,
   canal_id TEXT NOT NULL,
   titulo TEXT NOT NULL,
   imagen TEXT,
   fecha_agregado TIMESTAMP DEFAULT NOW(),
-  UNIQUE(usuario_id, canal_id)
+  UNIQUE(usuario_id, perfil_id, canal_id)
 );
 
 CREATE INDEX idx_favoritos_usuario ON favoritos(usuario_id);
+CREATE INDEX idx_favoritos_perfil ON favoritos(perfil_id);
 ```
 
 ### 3. Tabla de Perfiles
@@ -48,6 +82,7 @@ CREATE TABLE perfiles (
   usuario_id TEXT NOT NULL,
   nombre TEXT NOT NULL,
   avatar TEXT,
+  pin TEXT,
   fecha_creacion TIMESTAMP DEFAULT NOW()
 );
 
@@ -97,6 +132,10 @@ CREATE POLICY "Usuarios pueden ver sus perfiles"
 CREATE POLICY "Usuarios pueden crear perfiles"
   ON perfiles FOR INSERT
   WITH CHECK (usuario_id = auth.uid()::text);
+
+CREATE POLICY "Usuarios pueden actualizar sus perfiles"
+  ON perfiles FOR UPDATE
+  USING (usuario_id = auth.uid()::text);
 
 CREATE POLICY "Usuarios pueden eliminar sus perfiles"
   ON perfiles FOR DELETE
@@ -163,3 +202,36 @@ const perfiles = await supabaseServicio.obtenerPerfiles('usuario123');
 - El `usuario_id` debe ser único para cada usuario (puedes usar el email o un UUID)
 - Los datos se sincronizan automáticamente entre dispositivos
 - Asegúrate de tener habilitado RLS para seguridad
+
+
+## Si ya tienes las tablas creadas
+
+Si ya tienes las tablas pero necesitas agregar las nuevas columnas:
+
+```sql
+-- Agregar perfil_id a progreso_capitulos
+ALTER TABLE progreso_capitulos ADD COLUMN perfil_id UUID;
+CREATE INDEX idx_progreso_perfil ON progreso_capitulos(perfil_id);
+
+-- Agregar perfil_id a favoritos
+ALTER TABLE favoritos ADD COLUMN perfil_id UUID;
+CREATE INDEX idx_favoritos_perfil ON favoritos(perfil_id);
+
+-- Agregar pin a perfiles
+ALTER TABLE perfiles ADD COLUMN pin TEXT;
+
+-- Actualizar políticas de perfiles para permitir UPDATE
+CREATE POLICY "Usuarios pueden actualizar sus perfiles"
+  ON perfiles FOR UPDATE
+  USING (usuario_id = auth.uid()::text);
+```
+
+## Nuevas características
+
+### PIN de Perfil
+
+Cada perfil puede tener un PIN de 4 dígitos opcional para proteger el acceso. Cuando se selecciona un perfil con PIN, se pide que se ingrese antes de acceder.
+
+### Favoritos y Progreso por Perfil
+
+Los favoritos y el progreso de reproducción ahora están separados por perfil. Cada perfil tiene sus propios favoritos y su propio progreso de películas/series.

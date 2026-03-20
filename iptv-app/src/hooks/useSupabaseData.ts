@@ -63,7 +63,7 @@ export const useSupabaseData = () => {
     [usuarioId]
   );
 
-  const obtenerTodosProgresos = useCallback(async () => {
+  const obtenerTodosProgresos = useCallback(async (perfilId?: string) => {
     if (!usuarioId) {
       setError('Usuario no autenticado');
       return [];
@@ -72,7 +72,7 @@ export const useSupabaseData = () => {
     try {
       setCargando(true);
       setError(null);
-      const progresos = await supabaseServicio.obtenerTodosProgresos(usuarioId);
+      const progresos = await supabaseServicio.obtenerTodosProgresos(usuarioId, perfilId);
       return progresos;
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'Error obteniendo progresos';
@@ -136,7 +136,7 @@ export const useSupabaseData = () => {
     [usuarioId]
   );
 
-  const obtenerFavoritos = useCallback(async () => {
+  const obtenerFavoritos = useCallback(async (perfilId?: string) => {
     if (!usuarioId) {
       setError('Usuario no autenticado');
       return [];
@@ -145,7 +145,7 @@ export const useSupabaseData = () => {
     try {
       setCargando(true);
       setError(null);
-      const favoritos = await supabaseServicio.obtenerFavoritos(usuarioId);
+      const favoritos = await supabaseServicio.obtenerFavoritos(usuarioId, perfilId);
       return favoritos;
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'Error obteniendo favoritos';
@@ -177,6 +177,7 @@ export const useSupabaseData = () => {
   const crearPerfil = useCallback(
     async (nombre: string, avatar?: string) => {
       if (!usuarioId) {
+        console.error('usuarioId no disponible:', usuarioId);
         setError('Usuario no autenticado');
         return null;
       }
@@ -184,6 +185,7 @@ export const useSupabaseData = () => {
       try {
         setCargando(true);
         setError(null);
+        console.log('Creando perfil para usuario:', usuarioId);
         const perfil = await supabaseServicio.crearPerfil({
           usuario_id: usuarioId,
           nombre,
@@ -194,6 +196,7 @@ export const useSupabaseData = () => {
       } catch (err) {
         const mensaje = err instanceof Error ? err.message : 'Error creando perfil';
         setError(mensaje);
+        console.error('Error en crearPerfil:', err);
         return null;
       } finally {
         setCargando(false);
@@ -240,6 +243,37 @@ export const useSupabaseData = () => {
     []
   );
 
+  const actualizarPinPerfil = useCallback(
+    async (perfilId: string, pin: string) => {
+      try {
+        setCargando(true);
+        setError(null);
+        const resultado = await supabaseServicio.actualizarPinPerfil(perfilId, pin);
+        return resultado;
+      } catch (err) {
+        const mensaje = err instanceof Error ? err.message : 'Error actualizando PIN';
+        setError(mensaje);
+        return false;
+      } finally {
+        setCargando(false);
+      }
+    },
+    []
+  );
+
+  const verificarPinPerfil = useCallback(
+    async (perfilId: string, pin: string) => {
+      try {
+        const resultado = await supabaseServicio.verificarPinPerfil(perfilId, pin);
+        return resultado;
+      } catch (err) {
+        console.error('Error verificando PIN:', err);
+        return false;
+      }
+    },
+    []
+  );
+
   return {
     usuarioId,
     cargando,
@@ -257,5 +291,7 @@ export const useSupabaseData = () => {
     crearPerfil,
     obtenerPerfiles,
     eliminarPerfil,
+    actualizarPinPerfil,
+    verificarPinPerfil,
   };
 };
