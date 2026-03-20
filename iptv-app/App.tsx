@@ -1,9 +1,10 @@
-// App v2.2.0 - Supabase integrado
+// App v2.3.0 - Supabase integrado
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider } from './src/contexto/AuthContext';
 import { PerfilProvider } from './src/contexto/PerfilContext';
 import { SupabaseProvider } from './src/contexto/SupabaseContext';
+import { PerfilActivoProvider } from './src/contexto/PerfilActivoContext';
 import { NavegacionPrincipal } from './src/navegacion/NavegacionPrincipal';
 import { ModalFlyerInicio } from './src/componentes/ModalFlyerInicio';
 import configRemotaServicio from './src/servicios/configRemotaServicio';
@@ -42,9 +43,11 @@ export default function App() {
     <SupabaseProvider>
       <AuthProvider>
         <PerfilProvider>
-          <ModalFlyerInicio numeroWhatsApp="+51936185088" />
-          <NavegacionPrincipal />
-          <StatusBar style="light" backgroundColor="#141414" />
+          <PerfilActivoProvider>
+            <ModalFlyerInicio numeroWhatsApp="+51936185088" />
+            <NavegacionPrincipal />
+            <StatusBar style="light" backgroundColor="#141414" />
+          </PerfilActivoProvider>
         </PerfilProvider>
       </AuthProvider>
     </SupabaseProvider>
