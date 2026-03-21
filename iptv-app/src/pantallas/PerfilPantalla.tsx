@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../contexto/AuthContext';
 import { COLORS } from '../utils/constantes';
@@ -39,37 +40,58 @@ export const PerfilPantalla = () => {
 
   useFocusEffect(
     React.useCallback(() => {
+      console.log('PerfilPantalla enfocada, recargando datos...');
       cargarDatos();
-    }, [perfilActivo?.id, usuarioId])
+    }, [])
   );
 
   const cargarDatos = async () => {
-    // Cargar favoritos: primero del local storage, luego de Supabase si hay usuarioId
-    let favs = await obtenerFavoritos(perfilActivo?.id);
-    
-    if (usuarioId && perfilActivo?.id) {
-      const favSupabase = await obtenerFavoritosSupabase(perfilActivo.id);
-      // Combinar y eliminar duplicados
-      const favMap = new Map();
-      favs.forEach(f => favMap.set(f.id, f));
-      favSupabase.forEach(f => {
-        if (!favMap.has(f.canal_id)) {
+    try {
+      // Cargar favoritos: primero del local storage, luego de Supabase si hay usuarioId
+      let favs = await obtenerFavoritos(perfilActivo?.id);
+      console.log('Favoritos locales cargados:', favs.length);
+      
+      if (usuarioId && perfilActivo?.id) {
+        console.log('Cargando favoritos de Supabase para usuarioId:', usuarioId, 'perfilId:', perfilActivo.id);
+        const favSupabase = await obtenerFavoritosSupabase(perfilActivo.id);
+        console.log('Favoritos de Supabase:', favSupabase.length, favSupabase.map(f => f.canal_id));
+        
+        // Usar SOLO favoritos de Supabase como fuente de verdad
+        const favMap = new Map();
+        
+        // Agregar todos los favoritos de Supabase
+        favSupabase.forEach(f => {
+          // Extraer streamId del canal_id (formato: "pelicula_123" o "serie_456")
+          const partes = f.canal_id.split('_');
+          const streamId = partes.length > 1 ? parseInt(partes[1]) : undefined;
+          
           favMap.set(f.canal_id, {
             id: f.canal_id,
-            tipo: 'pelicula' as const,
+            tipo: (f as any).tipo || 'pelicula' as const,
             nombre: f.titulo,
             imagen: f.imagen,
             fecha: new Date(f.fecha_agregado).getTime(),
+            streamId: streamId,
+            serieId: (f as any).serie_id,
           });
-        }
-      });
-      favs = Array.from(favMap.values());
+        });
+        
+        favs = Array.from(favMap.values());
+        console.log('Favoritos finales después de sincronizar:', favs.length);
+        
+        // Actualizar el almacenamiento local con los favoritos de Supabase
+        const storageKey = `@favoritos_${perfilActivo.id}`;
+        await AsyncStorage.setItem(storageKey, JSON.stringify(favs));
+        console.log('Almacenamiento local actualizado con favoritos de Supabase');
+      }
+      
+      setFavoritos(favs.sort((a, b) => b.fecha - a.fecha));
+    } catch (error) {
+      console.error('Error en cargarDatos:', error);
     }
-    
-    setFavoritos(favs.sort((a, b) => b.fecha - a.fecha));
 
     // Cargar progresos: primero del local storage, luego de Supabase si hay usuarioId
-    let progresos = await obtenerTodosLosProgresos(perfilActivo?.id);
+    let progresos = await obtenerTodosLosProgresos(perfilActivo?.id, usuarioId);
     
     if (usuarioId && perfilActivo?.id) {
       const progSupabase = await obtenerProgresosSupabase(perfilActivo.id);
@@ -78,15 +100,31 @@ export const PerfilPantalla = () => {
       progresos.forEach(p => progMap.set(p.id, p));
       progSupabase.forEach(p => {
         if (!progMap.has(p.capitulo_id)) {
+          // Reconstruir URL si no está disponible
+          let url = (p as any).url || '';
+          if (!url && (p as any).streamId) {
+            if ((p as any).tipo === 'pelicula') {
+              url = `http://zgazy.com:8880/movie/${(p as any).streamId}.${(p as any).extension || 'mp4'}`;
+            } else if (((p as any).tipo === 'serie' || (p as any).tipo === 'episodio') && (p as any).temporada && (p as any).episodio) {
+              url = `http://zgazy.com:8880/series/${(p as any).serieId}/${(p as any).temporada}/${(p as any).episodio}.${(p as any).extension || 'mp4'}`;
+            }
+          }
+          
           progMap.set(p.capitulo_id, {
             id: p.capitulo_id,
             titulo: p.titulo,
-            url: '',
+            url: url,
             posicion: p.tiempo_actual,
             duracion: p.duracion,
             porcentaje: p.duracion > 0 ? (p.tiempo_actual / p.duracion) * 100 : 0,
             fecha: new Date(p.fecha_actualizacion).getTime(),
-            tipo: 'episodio' as const,
+            tipo: (p as any).tipo || 'episodio' as const,
+            streamId: (p as any).streamId,
+            serieId: (p as any).serieId,
+            temporada: (p as any).temporada,
+            episodio: (p as any).episodio,
+            extension: (p as any).extension,
+            imagen: (p as any).imagen,
           });
         }
       });
@@ -112,7 +150,7 @@ export const PerfilPantalla = () => {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            await eliminarFavorito(favorito.id, undefined, perfilActivo?.id);
+            await eliminarFavorito(favorito.id, usuarioId || undefined, perfilActivo?.id);
             cargarDatos();
           },
         },
@@ -120,27 +158,66 @@ export const PerfilPantalla = () => {
     );
   };
 
-  const reproducirFavorito = (favorito: Favorito) => {
-    if (favorito.tipo === 'pelicula' && favorito.datos) {
-      const parentNavigation = navigation.getParent();
-      if (parentNavigation) {
-        parentNavigation.navigate('DetallesPelicula', { pelicula: favorito.datos });
+  const reproducirFavorito = async (favorito: Favorito) => {
+    const parentNavigation = navigation.getParent();
+    if (!parentNavigation) return;
+
+    try {
+      // Si ya tiene datos, usarlos directamente
+      if (favorito.datos) {
+        if (favorito.tipo === 'pelicula') {
+          parentNavigation.navigate('DetallesPelicula', { pelicula: favorito.datos });
+        } else if (favorito.tipo === 'serie') {
+          parentNavigation.navigate('DetallesSerie', { serie: favorito.datos });
+        } else if (favorito.tipo === 'canal') {
+          const url = iptvServicio.getLiveStreamUrl(favorito.streamId || 0, 'm3u8');
+          parentNavigation.navigate('Reproductor', {
+            url,
+            titulo: favorito.nombre,
+            esTvEnVivo: true,
+          });
+        }
+        return;
       }
-    } else if (favorito.tipo === 'serie' && favorito.datos) {
-      const parentNavigation = navigation.getParent();
-      if (parentNavigation) {
-        parentNavigation.navigate('DetallesSerie', { serie: favorito.datos });
-      }
-    } else if (favorito.tipo === 'canal' && favorito.streamId) {
-      const url = iptvServicio.getLiveStreamUrl(favorito.streamId, 'm3u8');
-      const parentNavigation = navigation.getParent();
-      if (parentNavigation) {
+
+      // Si no tiene datos, intentar recuperarlos
+      if (favorito.tipo === 'pelicula' && favorito.streamId) {
+        // Buscar la película en el servicio IPTV
+        const peliculas = await iptvServicio.getVodStreams();
+        const pelicula = peliculas.find(p => p.stream_id === favorito.streamId);
+        
+        if (pelicula) {
+          parentNavigation.navigate('DetallesPelicula', { pelicula });
+        } else {
+          Alert.alert('Error', 'No se pudo encontrar la película');
+        }
+      } else if (favorito.tipo === 'serie' && favorito.streamId) {
+        // Buscar la serie en el servicio IPTV
+        const series = await iptvServicio.getSeries();
+        const serie = series.find(s => s.series_id === favorito.streamId);
+        
+        if (serie) {
+          parentNavigation.navigate('DetallesSerie', { serie });
+        } else {
+          Alert.alert('Error', 'No se pudo encontrar la serie');
+        }
+      } else if (favorito.tipo === 'canal' && favorito.streamId) {
+        const url = iptvServicio.getLiveStreamUrl(favorito.streamId, 'm3u8');
         parentNavigation.navigate('Reproductor', {
           url,
           titulo: favorito.nombre,
           esTvEnVivo: true,
         });
+      } else {
+        Alert.alert(
+          'Información incompleta',
+          'No hay suficiente información para reproducir este contenido. Por favor, accede desde la pantalla de detalles.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
       }
+    } catch (error) {
+      console.error('Error al reproducir favorito:', error);
+      Alert.alert('Error', 'No se pudo reproducir el contenido');
     }
   };
 
@@ -307,7 +384,7 @@ export const PerfilPantalla = () => {
         <View style={styles.userIconContainer}>
           <Ionicons name="person-circle" size={80} color={COLORS.primary} />
         </View>
-        <Text style={styles.userName}>{usuario?.username || 'Usuario'}</Text>
+        <Text style={styles.userName}>{perfilActivo?.nombre || usuario?.username || 'Usuario'}</Text>
         <Text style={styles.userInfo}>
           Expira: {usuario?.exp_date ? new Date(parseInt(String(usuario.exp_date)) * 1000).toLocaleDateString() : 'N/A'}
         </Text>

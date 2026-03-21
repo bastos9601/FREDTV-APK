@@ -6,12 +6,14 @@ import { useAuth } from '../contexto/AuthContext';
 import { COLORS } from '../utils/constantes';
 import { Ionicons } from '@expo/vector-icons';
 import { ModalAnuncio } from '../componentes/ModalAnuncio';
+import Constants from 'expo-constants';
 
 export const LoginPantalla = () => {
   const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mostrarModalAnuncio, setMostrarModalAnuncio] = useState(true);
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
   const { iniciarSesion } = useAuth();
 
   const manejarLogin = async () => {
@@ -91,9 +93,17 @@ export const LoginPantalla = () => {
                       placeholder="Contraseña"
                       value={contrasena}
                       onChangeText={setContrasena}
-                      secureTextEntry={true}
+                      secureTextEntry={!mostrarContrasena}
                       autoCapitalize="none"
                     />
+                    <View style={styles.togglePasswordIcon}>
+                      <Ionicons 
+                        name={mostrarContrasena ? "eye-outline" : "eye-off-outline"} 
+                        size={20} 
+                        color={COLORS.textSecondary}
+                        onPress={() => setMostrarContrasena(!mostrarContrasena)}
+                      />
+                    </View>
                   </View>
                   
                   <View style={styles.botonContainer}>
@@ -109,7 +119,7 @@ export const LoginPantalla = () => {
               {/* Footer */}
               <View style={styles.footer}>
                 <Text style={styles.footerText}>FRED TV</Text>
-                <Text style={styles.footerSubtext}>Versión 2.0.0</Text>
+                <Text style={styles.footerSubtext}>Versión {Constants.expoConfig?.version || '2.7.6'}</Text>
               </View>
             </View>
           </ScrollView>
@@ -206,6 +216,12 @@ const styles = StyleSheet.create({
   inputIcon: {
     position: 'absolute',
     left: 15,
+    top: 15,
+    zIndex: 1,
+  },
+  togglePasswordIcon: {
+    position: 'absolute',
+    right: 15,
     top: 15,
     zIndex: 1,
   },

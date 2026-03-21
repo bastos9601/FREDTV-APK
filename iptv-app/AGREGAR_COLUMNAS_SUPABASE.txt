@@ -1,0 +1,56 @@
+INSTRUCCIONES PARA AGREGAR COLUMNAS A SUPABASE
+===============================================
+
+PASO 1: Acceder a Supabase
+--------------------------
+1. Abre tu navegador
+2. Ve a: https://app.supabase.com
+3. Inicia sesión con tu cuenta
+4. Selecciona tu proyecto (ttevigqoymqdoogkcjjm)
+
+PASO 2: Abrir SQL Editor
+------------------------
+1. En el menú izquierdo, busca "SQL Editor"
+2. Haz clic en "SQL Editor"
+3. Haz clic en "New Query" (botón azul)
+
+PASO 3: Copiar y Pegar el SQL
+------------------------------
+Copia TODO el siguiente código:
+
+---INICIO---
+ALTER TABLE progreso_capitulos
+ADD COLUMN url TEXT,
+ADD COLUMN tipo TEXT,
+ADD COLUMN temporada INTEGER,
+ADD COLUMN episodio INTEGER,
+ADD COLUMN serie_id INTEGER,
+ADD COLUMN extension TEXT,
+ADD COLUMN imagen TEXT,
+ADD COLUMN streamId INTEGER;
+---FIN---
+
+1. Pega el código en el editor SQL
+2. Haz clic en el botón "Run" (botón azul con símbolo de play)
+
+PASO 4: Verificar
+-----------------
+1. Si ves un mensaje de éxito, las columnas se agregaron correctamente
+2. Si ves un error, es posible que las columnas ya existan (no hay problema)
+
+PASO 5: Probar la Solución
+---------------------------
+1. Reproduce un video en el dispositivo 1
+2. Espera 10 segundos para que se guarde
+3. Cierra la app
+4. Abre la app en el dispositivo 2 con el mismo usuario y perfil
+5. Ve a "Continuar viendo"
+6. Presiona play
+7. El video debe reproducirse correctamente
+
+NOTAS IMPORTANTES
+-----------------
+- Si el video sigue sin reproducirse, reproduce el video nuevamente
+  en el dispositivo 1 para que se guarde con la URL
+- Asegúrate de usar el mismo usuario y perfil en ambos dispositivos
+- El progreso debe guardarse en Supabase (espera 10 segundos)

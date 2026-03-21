@@ -32,6 +32,7 @@ export const agregarFavorito = async (favorito: Favorito, usuarioId?: string, pe
     
     // Guardar en Supabase si hay usuarioId
     if (usuarioId) {
+      console.log('Guardando favorito en Supabase:', { usuarioId, perfilId, favorito });
       await supabaseServicio.agregarFavorito({
         usuario_id: usuarioId,
         perfil_id: perfilId,
@@ -40,6 +41,8 @@ export const agregarFavorito = async (favorito: Favorito, usuarioId?: string, pe
         imagen: favorito.imagen,
         fecha_agregado: new Date().toISOString(),
       });
+    } else {
+      console.log('No se guardó en Supabase porque usuarioId es undefined');
     }
   } catch (error) {
     console.error('Error al agregar favorito:', error);
@@ -48,14 +51,20 @@ export const agregarFavorito = async (favorito: Favorito, usuarioId?: string, pe
 
 export const eliminarFavorito = async (id: string, usuarioId?: string, perfilId?: string): Promise<void> => {
   try {
+    console.log('Eliminando favorito:', { id, usuarioId, perfilId });
     const favoritos = await obtenerFavoritos(perfilId);
     const nuevosFavoritos = favoritos.filter(f => f.id !== id);
     const storageKey = getStorageKey(perfilId);
     await AsyncStorage.setItem(storageKey, JSON.stringify(nuevosFavoritos));
+    console.log('Favorito eliminado del almacenamiento local');
     
     // Eliminar de Supabase si hay usuarioId
     if (usuarioId) {
+      console.log('Eliminando favorito de Supabase:', { usuarioId, id, perfilId });
       await supabaseServicio.eliminarFavorito(usuarioId, id, perfilId);
+      console.log('Favorito eliminado de Supabase');
+    } else {
+      console.log('No se eliminó de Supabase porque usuarioId es undefined');
     }
   } catch (error) {
     console.error('Error al eliminar favorito:', error);

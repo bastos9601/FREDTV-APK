@@ -26,6 +26,9 @@ interface Favorito {
   titulo: string;
   imagen?: string;
   fecha_agregado: string;
+  tipo?: string;
+  stream_id?: number;
+  serie_id?: number;
 }
 
 interface Perfil {
@@ -105,6 +108,18 @@ class SupabaseServicio {
    */
   async guardarProgreso(progreso: ProgresoCap): Promise<boolean> {
     try {
+      // Preparar datos adicionales que pueden no estar en la tabla
+      const datosAdicionales = {
+        url: (progreso as any).url,
+        tipo: (progreso as any).tipo,
+        temporada: (progreso as any).temporada,
+        episodio: (progreso as any).episodio,
+        serie_id: (progreso as any).serie_id,
+        extension: (progreso as any).extension,
+        imagen: (progreso as any).imagen,
+        streamId: (progreso as any).streamId,
+      };
+
       const { error } = await supabase
         .from('progreso_capitulos')
         .upsert(
@@ -118,6 +133,15 @@ class SupabaseServicio {
             duracion: Math.floor(progreso.duracion),
             tiempo_actual: Math.floor(progreso.tiempo_actual),
             fecha_actualizacion: new Date().toISOString(),
+            // Intentar guardar campos adicionales si existen en la tabla
+            ...(datosAdicionales.url && { url: datosAdicionales.url }),
+            ...(datosAdicionales.tipo && { tipo: datosAdicionales.tipo }),
+            ...(datosAdicionales.temporada && { temporada: datosAdicionales.temporada }),
+            ...(datosAdicionales.episodio && { episodio: datosAdicionales.episodio }),
+            ...(datosAdicionales.serie_id && { serie_id: datosAdicionales.serie_id }),
+            ...(datosAdicionales.extension && { extension: datosAdicionales.extension }),
+            ...(datosAdicionales.imagen && { imagen: datosAdicionales.imagen }),
+            ...(datosAdicionales.streamId && { streamId: datosAdicionales.streamId }),
           },
           { onConflict: 'usuario_id,perfil_id,canal_id,capitulo_id' }
         );
@@ -251,6 +275,7 @@ class SupabaseServicio {
    */
   async eliminarFavorito(usuarioId: string, canalId: string, perfilId?: string): Promise<boolean> {
     try {
+      console.log('Eliminando favorito de Supabase:', { usuarioId, canalId, perfilId });
       let query = supabase
         .from('favoritos')
         .delete()
@@ -264,10 +289,11 @@ class SupabaseServicio {
       const { error } = await query;
 
       if (error) {
-        console.error('Error eliminando favorito:', error);
+        console.error('Error eliminando favorito de Supabase:', error);
         return false;
       }
 
+      console.log('Favorito eliminado exitosamente de Supabase');
       return true;
     } catch (error) {
       console.error('Error en eliminarFavorito:', error);

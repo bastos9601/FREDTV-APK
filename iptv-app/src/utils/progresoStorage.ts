@@ -29,7 +29,7 @@ export const guardarProgreso = async (progreso: ProgresoVideo, usuarioId?: strin
       return;
     }
 
-    const progresosGuardados = await obtenerTodosLosProgresos(perfilId);
+    const progresosGuardados = await obtenerTodosLosProgresos(perfilId, usuarioId);
     
     // Actualizar o agregar el progreso
     const index = progresosGuardados.findIndex(p => p.id === progreso.id);
@@ -49,6 +49,16 @@ export const guardarProgreso = async (progreso: ProgresoVideo, usuarioId?: strin
     
     // Guardar en Supabase si hay usuarioId
     if (usuarioId) {
+      // Asegurar que la URL esté disponible
+      let url = progreso.url;
+      if (!url && progreso.streamId) {
+        if (progreso.tipo === 'pelicula') {
+          url = `http://zgazy.com:8880/movie/${progreso.streamId}.${progreso.extension || 'mp4'}`;
+        } else if ((progreso.tipo === 'serie' || progreso.tipo === 'episodio') && progreso.temporada && progreso.episodio) {
+          url = `http://zgazy.com:8880/series/${progreso.serieId}/${progreso.temporada}/${progreso.episodio}.${progreso.extension || 'mp4'}`;
+        }
+      }
+
       await supabaseServicio.guardarProgreso({
         usuario_id: usuarioId,
         perfil_id: perfilId,
@@ -59,7 +69,14 @@ export const guardarProgreso = async (progreso: ProgresoVideo, usuarioId?: strin
         duracion: progreso.duracion,
         tiempo_actual: progreso.posicion,
         fecha_actualizacion: new Date().toISOString(),
-      });
+        url: url, // Guardar URL
+        tipo: progreso.tipo,
+        temporada: progreso.temporada,
+        episodio: progreso.episodio,
+        serie_id: progreso.serieId,
+        extension: progreso.extension,
+        imagen: progreso.imagen,
+      } as any);
     }
   } catch (error) {
     console.error('Error al guardar progreso:', error);
@@ -69,18 +86,82 @@ export const guardarProgreso = async (progreso: ProgresoVideo, usuarioId?: strin
 export const obtenerProgreso = async (id: string, perfilId?: string): Promise<ProgresoVideo | null> => {
   try {
     const progresos = await obtenerTodosLosProgresos(perfilId);
-    return progresos.find(p => p.id === id) || null;
+    const progreso = progresos.find(p => p.id === id);
+    
+    if (progreso && !progreso.url && progreso.streamId) {
+      // Reconstruir URL para películas
+      if (progreso.tipo === 'pelicula') {
+        progreso.url = `http://zgazy.com:8880/movie/${progreso.streamId}.${progreso.extension || 'mp4'}`;
+      }
+      // Reconstruir URL para series/episodios
+      else if ((progreso.tipo === 'serie' || progreso.tipo === 'episodio') && progreso.temporada && progreso.episodio) {
+        progreso.url = `http://zgazy.com:8880/series/${progreso.serieId}/${progreso.temporada}/${progreso.episodio}.${progreso.extension || 'mp4'}`;
+      }
+    }
+    
+    return progreso || null;
   } catch (error) {
     console.error('Error al obtener progreso:', error);
     return null;
   }
 };
 
-export const obtenerTodosLosProgresos = async (perfilId?: string): Promise<ProgresoVideo[]> => {
+export const obtenerTodosLosProgresos = async (perfilId?: string, usuarioId?: string): Promise<ProgresoVideo[]> => {
   try {
+    // Primero intentar obtener desde Supabase si hay usuarioId
+    if (usuarioId && perfilId) {
+      try {
+        const progresosSupabase = await supabaseServicio.obtenerTodosProgresos(usuarioId, perfilId);
+        
+        if (progresosSupabase && progresosSupabase.length > 0) {
+          // Convertir datos de Supabase al formato ProgresoVideo
+          const progresosConvertidos = progresosSupabase.map((p: any) => ({
+            id: p.capitulo_id || p.canal_id,
+            titulo: p.titulo,
+            posicion: p.tiempo_actual || 0,
+            duracion: p.duracion || 0,
+            porcentaje: p.progreso || 0,
+            fecha: new Date(p.fecha_actualizacion).getTime(),
+            tipo: p.tipo || 'pelicula',
+            streamId: parseInt(p.canal_id),
+            serieId: p.serie_id,
+            temporada: p.temporada,
+            episodio: p.episodio,
+            extension: p.extension || 'mp4',
+            url: p.url, // Supabase debería tener la URL
+            imagen: p.imagen,
+          }));
+          
+          // Guardar en AsyncStorage para caché local
+          const storageKey = getStorageKey(perfilId);
+          await AsyncStorage.setItem(storageKey, JSON.stringify(progresosConvertidos));
+          
+          return progresosConvertidos;
+        }
+      } catch (error) {
+        console.log('No se pudo obtener de Supabase, usando AsyncStorage:', error);
+      }
+    }
+    
+    // Fallback: obtener desde AsyncStorage
     const storageKey = getStorageKey(perfilId);
     const data = await AsyncStorage.getItem(storageKey);
-    return data ? JSON.parse(data) : [];
+    const progresos = data ? JSON.parse(data) : [];
+    
+    // Reconstruir URLs faltantes
+    return progresos.map((progreso: ProgresoVideo) => {
+      if (!progreso.url && progreso.streamId) {
+        // Reconstruir URL para películas
+        if (progreso.tipo === 'pelicula') {
+          progreso.url = `http://zgazy.com:8880/movie/${progreso.streamId}.${progreso.extension || 'mp4'}`;
+        }
+        // Reconstruir URL para series/episodios
+        else if ((progreso.tipo === 'serie' || progreso.tipo === 'episodio') && progreso.temporada && progreso.episodio) {
+          progreso.url = `http://zgazy.com:8880/series/${progreso.serieId}/${progreso.temporada}/${progreso.episodio}.${progreso.extension || 'mp4'}`;
+        }
+      }
+      return progreso;
+    });
   } catch (error) {
     console.error('Error al obtener progresos:', error);
     return [];
@@ -131,7 +212,7 @@ export const limpiarProgresosAntiguos = async (diasMaximos: number = 30, perfilI
  */
 export const actualizarProgreso = async (id: string, actualizacion: Partial<ProgresoVideo>, usuarioId?: string, perfilId?: string): Promise<void> => {
   try {
-    const progresos = await obtenerTodosLosProgresos(perfilId);
+    const progresos = await obtenerTodosLosProgresos(perfilId, usuarioId);
     const index = progresos.findIndex(p => p.id === id);
     
     if (index >= 0) {
@@ -142,6 +223,17 @@ export const actualizarProgreso = async (id: string, actualizacion: Partial<Prog
       // Actualizar en Supabase si hay usuarioId
       if (usuarioId) {
         const progreso = progresos[index];
+        
+        // Asegurar que la URL esté disponible
+        let url = progreso.url;
+        if (!url && progreso.streamId) {
+          if (progreso.tipo === 'pelicula') {
+            url = `http://zgazy.com:8880/movie/${progreso.streamId}.${progreso.extension || 'mp4'}`;
+          } else if ((progreso.tipo === 'serie' || progreso.tipo === 'episodio') && progreso.temporada && progreso.episodio) {
+            url = `http://zgazy.com:8880/series/${progreso.serieId}/${progreso.temporada}/${progreso.episodio}.${progreso.extension || 'mp4'}`;
+          }
+        }
+
         await supabaseServicio.guardarProgreso({
           usuario_id: usuarioId,
           perfil_id: perfilId,
@@ -152,7 +244,14 @@ export const actualizarProgreso = async (id: string, actualizacion: Partial<Prog
           duracion: progreso.duracion,
           tiempo_actual: progreso.posicion,
           fecha_actualizacion: new Date().toISOString(),
-        });
+          url: url,
+          tipo: progreso.tipo,
+          temporada: progreso.temporada,
+          episodio: progreso.episodio,
+          serie_id: progreso.serieId,
+          extension: progreso.extension,
+          imagen: progreso.imagen,
+        } as any);
       }
     }
   } catch (error) {

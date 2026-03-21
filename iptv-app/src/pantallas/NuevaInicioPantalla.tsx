@@ -206,7 +206,7 @@ export const NuevaInicioPantalla = () => {
 
   const cargarContinuarViendo = async () => {
     try {
-      const progresos = await obtenerTodosLosProgresos(perfilActivo?.id);
+      const progresos = await obtenerTodosLosProgresos(perfilActivo?.id, usuario?.username);
       
       // Cargar películas y series para obtener las imágenes
       const [peliculas, series] = await Promise.all([

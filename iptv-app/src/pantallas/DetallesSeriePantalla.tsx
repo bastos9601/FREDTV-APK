@@ -18,6 +18,7 @@ import { COLORS } from '../utils/constantes';
 import { toggleFavorito, esFavorito, Favorito } from '../utils/favoritosStorage';
 import { useSupabase } from '../contexto/SupabaseContext';
 import { usePerfilActivo } from '../contexto/PerfilActivoContext';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +39,7 @@ export const DetallesSeriePantalla = () => {
   const navigation = useNavigation<any>();
   const { usuarioId } = useSupabase();
   const { perfilActivo } = usePerfilActivo();
+  const { obtenerFavoritos: obtenerFavoritosSupabase } = useSupabaseData();
   const { serie } = route.params;
 
   const [cargando, setCargando] = useState(true);
@@ -55,7 +57,16 @@ export const DetallesSeriePantalla = () => {
   }, []);
 
   const verificarFavorito = async () => {
-    const fav = await esFavorito(`serie_${serie.series_id}`);
+    const id = `serie_${serie.series_id}`;
+    // Primero verificar en local
+    let fav = await esFavorito(id, perfilActivo?.id);
+    
+    // Si no está en local pero hay usuarioId, verificar en Supabase
+    if (!fav && usuarioId && perfilActivo?.id) {
+      const favSupabase = await obtenerFavoritosSupabase(perfilActivo.id);
+      fav = favSupabase.some(f => f.canal_id === id);
+    }
+    
     setEsFav(fav);
   };
 
