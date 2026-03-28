@@ -9,6 +9,7 @@ import {
   Modal,
   Dimensions,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/constantes';
@@ -37,13 +38,14 @@ export const ModalDetallesPelicula: React.FC<ModalDetallesPeliculaProps> = ({
   perfilId,
 }) => {
   const [esFav, setEsFav] = useState(false);
-  const [cargandoTrailer, setCargandoTrailer] = useState(false);
-  const [descripcion, setDescripcion] = useState<string>('');
+  const [cargandoDetalles, setCargandoDetalles] = useState(false);
+  const [detallesTMDB, setDetallesTMDB] = useState<any>(null);
+  const [peliculasSimilares, setPeliculasSimilares] = useState<VodStream[]>([]);
 
   useEffect(() => {
     if (visible && pelicula) {
       verificarFavorito();
-      buscarDescripcion();
+      cargarDetalles();
     }
   }, [visible, pelicula?.stream_id]);
 
@@ -53,19 +55,26 @@ export const ModalDetallesPelicula: React.FC<ModalDetallesPeliculaProps> = ({
     setEsFav(fav);
   };
 
-  const buscarDescripcion = async () => {
+  const cargarDetalles = async () => {
     if (!pelicula) return;
     try {
-      setCargandoTrailer(true);
+      setCargandoDetalles(true);
       const { pelicula: peliculaTMDB } = await tmdbServicio.buscarPeliculaConTrailer(pelicula.name);
       
-      if (peliculaTMDB && peliculaTMDB.overview) {
-        setDescripcion(peliculaTMDB.overview);
+      if (peliculaTMDB) {
+        setDetallesTMDB(peliculaTMDB);
       }
+      
+      // Cargar películas similares
+      const todasPeliculas = await iptvServicio.getVodStreams();
+      const similares = todasPeliculas
+        .filter(p => p.stream_id !== pelicula.stream_id && p.category_id === pelicula.category_id)
+        .slice(0, 10);
+      setPeliculasSimilares(similares);
     } catch (error) {
-      console.error('Error buscando descripción:', error);
+      console.error('Error cargando detalles:', error);
     } finally {
-      setCargandoTrailer(false);
+      setCargandoDetalles(false);
     }
   };
 
@@ -106,91 +115,175 @@ export const ModalDetallesPelicula: React.FC<ModalDetallesPeliculaProps> = ({
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
         >
-          {/* Header con imagen */}
+          {/* Header con imagen de fondo */}
           <View style={styles.headerContainer}>
             <Image
               source={{ uri: pelicula.stream_icon }}
-              style={styles.posterImage}
+              style={styles.backdropImage}
               resizeMode="cover"
+              blurRadius={2}
             />
+            
+            {/* Gradiente oscuro */}
+            <View style={styles.gradientOverlay} />
             
             {/* Botón cerrar */}
             <TouchableOpacity 
               style={styles.closeButton}
               onPress={onClose}
             >
-              <Ionicons name="close" size={28} color="#FFF" />
+              <Ionicons name="arrow-back" size={28} color="#FFF" />
             </TouchableOpacity>
+
+            {/* Título sobre la imagen */}
+            <View style={styles.tituloContainer}>
+              <Text style={styles.tituloGrande}>{pelicula.name}</Text>
+            </View>
           </View>
 
           {/* Contenido */}
           <View style={styles.contentContainer}>
-            {/* Título y rating */}
-            <Text style={styles.titulo}>{pelicula.name}</Text>
-            
-            <View style={styles.metaContainer}>
-              {pelicula.rating && (
-                <View style={styles.ratingBadge}>
-                  <Ionicons name="star" size={16} color="#FFD700" />
-                  <Text style={styles.ratingText}>{pelicula.rating}</Text>
-                </View>
-              )}
+            {/* Rating, duración y fecha */}
+            <View style={styles.metaRow}>
+              {/* Estrellas de rating */}
+              <View style={styles.starsContainer}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= (pelicula.rating_5based || 0) ? 'star' : 'star-outline'}
+                    size={16}
+                    color="#FFD700"
+                  />
+                ))}
+              </View>
+              
+              {/* Duración */}
+              <Text style={styles.metaText}>1h 28m</Text>
+              
+              {/* Fecha */}
               {pelicula.added && (
-                <Text style={styles.yearText}>
-                  {new Date(parseInt(pelicula.added.toString()) * 1000).getFullYear()}
+                <Text style={styles.metaText}>
+                  {new Date(parseInt(pelicula.added.toString()) * 1000).toLocaleDateString('es-ES')}
                 </Text>
               )}
-            </View>
-
-            {/* Botones de acción */}
-            <View style={styles.actionButtons}>
+              
+              {/* Botón favorito */}
               <TouchableOpacity 
-                style={styles.playButton}
-                onPress={reproducirPelicula}
-              >
-                <Ionicons name="play" size={20} color="#FFF" />
-                <Text style={styles.playButtonText}>Reproducir</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.favoritoButton}
+                style={styles.favoritoIcono}
                 onPress={manejarFavorito}
               >
                 <Ionicons
                   name={esFav ? 'heart' : 'heart-outline'}
-                  size={24}
+                  size={28}
                   color={esFav ? COLORS.primary : COLORS.text}
                 />
               </TouchableOpacity>
             </View>
 
-            {/* Sinopsis */}
-            {cargandoTrailer ? (
+            {/* Botón Ver ahora */}
+            <TouchableOpacity 
+              style={styles.verAhoraButton}
+              onPress={reproducirPelicula}
+            >
+              <Ionicons name="play" size={24} color="#FFF" />
+              <Text style={styles.verAhoraText}>Ver ahora</Text>
+            </TouchableOpacity>
+
+            {/* Descripción */}
+            {cargandoDetalles ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={COLORS.primary} />
               </View>
-            ) : descripcion ? (
-              <View style={styles.sinopsisContainer}>
-                <Text style={styles.sinopsisTitle}>Sinopsis</Text>
-                <Text style={styles.sinopsisText}>{descripcion}</Text>
-              </View>
+            ) : detallesTMDB?.overview ? (
+              <Text style={styles.descripcionText} numberOfLines={3}>
+                {detallesTMDB.overview}
+              </Text>
             ) : null}
 
-            {/* Información adicional */}
-            <View style={styles.infoContainer}>
-              {pelicula.rating_5based && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Rating:</Text>
-                  <Text style={styles.infoValue}>{pelicula.rating_5based}/5</Text>
-                </View>
-              )}
-              {pelicula.container_extension && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Formato:</Text>
-                  <Text style={styles.infoValue}>{pelicula.container_extension.toUpperCase()}</Text>
-                </View>
-              )}
-            </View>
+            {/* Género y Director */}
+            {detallesTMDB && (
+              <View style={styles.infoSection}>
+                {detallesTMDB.genres && detallesTMDB.genres.length > 0 && (
+                  <Text style={styles.infoText}>
+                    <Text style={styles.infoLabel}>Género: </Text>
+                    {detallesTMDB.genres.map((g: any) => g.name).join(' / ')}
+                  </Text>
+                )}
+                {detallesTMDB.director && (
+                  <Text style={styles.infoText}>
+                    <Text style={styles.infoLabel}>Dirigido por: </Text>
+                    {detallesTMDB.director}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* Reparto & Equipo */}
+            {detallesTMDB?.cast && detallesTMDB.cast.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Reparto & Equipo</Text>
+                <FlatList
+                  horizontal
+                  data={detallesTMDB.cast.slice(0, 10)}
+                  keyExtractor={(item: any, index: number) => `cast-${index}`}
+                  showsHorizontalScrollIndicator={false}
+                  renderItem={({ item }: { item: any }) => (
+                    <View style={styles.castItem}>
+                      {item.profile_path ? (
+                        <Image
+                          source={{ uri: `https://image.tmdb.org/t/p/w185${item.profile_path}` }}
+                          style={styles.castImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.castPlaceholder}>
+                          <Ionicons name="person" size={40} color={COLORS.textSecondary} />
+                        </View>
+                      )}
+                      <Text style={styles.castName} numberOfLines={2}>
+                        {item.name}
+                      </Text>
+                    </View>
+                  )}
+                />
+              </View>
+            )}
+
+            {/* Más como esto */}
+            {peliculasSimilares.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Más como esto</Text>
+                <FlatList
+                  horizontal
+                  data={peliculasSimilares}
+                  keyExtractor={(item: VodStream) => `similar-${item.stream_id}`}
+                  showsHorizontalScrollIndicator={false}
+                  renderItem={({ item }: { item: VodStream }) => (
+                    <TouchableOpacity
+                      style={styles.similarItem}
+                      onPress={() => {
+                        onClose();
+                        setTimeout(() => {
+                          if (onReproducir) onReproducir(item);
+                        }, 300);
+                      }}
+                    >
+                      {item.stream_icon ? (
+                        <Image
+                          source={{ uri: item.stream_icon }}
+                          style={styles.similarImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.similarPlaceholder}>
+                          <Ionicons name="film" size={30} color={COLORS.textSecondary} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            )}
 
             <View style={styles.bottomSpace} />
           </View>
@@ -203,140 +296,167 @@ export const ModalDetallesPelicula: React.FC<ModalDetallesPeliculaProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.95)',
   },
   modalContainer: {
+    flex: 1,
     backgroundColor: COLORS.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: height * 0.9,
   },
   headerContainer: {
     position: 'relative',
     width: '100%',
-    height: 250,
+    height: 300,
   },
-  posterImage: {
+  backdropImage: {
     width: '100%',
     height: '100%',
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
+    backgroundColor: 'transparent',
+    background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.9))',
   },
   closeButton: {
     position: 'absolute',
     top: 15,
-    right: 15,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    left: 15,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  tituloContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+  },
+  tituloGrande: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+  },
   contentContainer: {
     padding: 20,
   },
-  titulo: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 10,
-  },
-  metaContainer: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 15,
-    gap: 10,
+    gap: 12,
   },
-  ratingBadge: {
+  starsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
-    gap: 5,
+    gap: 2,
   },
-  ratingText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  yearText: {
+  metaText: {
     color: COLORS.textSecondary,
-    fontSize: 14,
+    fontSize: 13,
   },
-  actionButtons: {
+  favoritoIcono: {
+    marginLeft: 'auto',
+  },
+  verAhoraButton: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E50914',
+    paddingVertical: 14,
+    borderRadius: 8,
     marginBottom: 20,
+    gap: 10,
   },
-  playButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  playButtonText: {
+  verAhoraText: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  favoritoButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: COLORS.card,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    fontSize: 18,
+    fontWeight: '600',
   },
   loadingContainer: {
     paddingVertical: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sinopsisContainer: {
-    backgroundColor: COLORS.card,
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-  sinopsisTitle: {
-    color: COLORS.text,
+  descripcionText: {
+    color: COLORS.textSecondary,
     fontSize: 14,
-    fontWeight: 'bold',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  infoSection: {
+    marginBottom: 25,
+  },
+  infoText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
     marginBottom: 8,
   },
-  sinopsisText: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  infoContainer: {
-    backgroundColor: COLORS.card,
-    padding: 15,
-    borderRadius: 10,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
   infoLabel: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-  },
-  infoValue: {
     color: COLORS.text,
-    fontSize: 13,
     fontWeight: '600',
   },
+  section: {
+    marginBottom: 25,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 15,
+  },
+  castItem: {
+    width: 100,
+    marginRight: 12,
+    alignItems: 'center',
+  },
+  castImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.card,
+    marginBottom: 8,
+  },
+  castPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  castName: {
+    color: COLORS.text,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  similarItem: {
+    width: 120,
+    marginRight: 12,
+  },
+  similarImage: {
+    width: 120,
+    height: 180,
+    borderRadius: 8,
+    backgroundColor: COLORS.card,
+  },
+  similarPlaceholder: {
+    width: 120,
+    height: 180,
+    borderRadius: 8,
+    backgroundColor: COLORS.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   bottomSpace: {
-    height: 20,
+    height: 40,
   },
 });

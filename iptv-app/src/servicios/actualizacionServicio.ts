@@ -12,10 +12,10 @@ interface VersionInfo {
  */
 class ActualizacionServicio {
   // URL del archivo de versión en GitHub (puedes crear un archivo version.json en tu repo)
-  private readonly VERSION_URL = 'https://raw.githubusercontent.com/bastos9601/FREDTV-APK/main/version.json';
+  private readonly VERSION_URL = 'https://raw.githubusercontent.com/bastos9601/FREDSPRO-APK/main/version.json';
   
   // URL de descarga del APK
-  private readonly APK_URL = 'https://github.com/bastos9601/FREDTV-APK/releases/download/v{VERSION}/app.apk';
+  private readonly APK_URL = 'https://github.com/bastos9601/FREDSPRO-APK/releases/download/v{VERSION}/app.apk';
 
   /**
    * Obtiene la versión actual de la app desde app.json

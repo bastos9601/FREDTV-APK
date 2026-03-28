@@ -28,7 +28,7 @@ const { width } = Dimensions.get('window');
 
 export const PerfilPantalla = () => {
   const { usuario, cerrarSesion } = useAuth();
-  const { perfilActivo } = usePerfilActivo();
+  const { perfilActivo, limpiarPerfil } = usePerfilActivo();
   const { obtenerFavoritos: obtenerFavoritosSupabase, obtenerTodosProgresos: obtenerProgresosSupabase, usuarioId, actualizarPinPerfil } = useSupabaseData();
   const [favoritos, setFavoritos] = useState<Favorito[]>([]);
   const [continuarViendo, setContinuarViendo] = useState<ProgresoVideo[]>([]);
@@ -375,7 +375,7 @@ export const PerfilPantalla = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>FRED TV</Text>
+        <Text style={styles.logo}>{perfilActivo?.nombre || 'IPTV'}</Text>
         <Text style={styles.subtitulo}>Mi Perfil</Text>
       </View>
 
@@ -448,7 +448,11 @@ export const PerfilPantalla = () => {
             <Text style={styles.botonTexto}>PIN</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={[styles.boton, styles.logoutButton]} onPress={cerrarSesion}>
+          <TouchableOpacity style={[styles.boton, styles.logoutButton]} onPress={async () => {
+            // Limpiar solo el perfil activo, no la sesión completa
+            await limpiarPerfil();
+            navigation.navigate('SeleccionPerfil');
+          }}>
             <Ionicons name="log-out-outline" size={18} color="#FFF" />
             <Text style={styles.botonTexto}>Cerrar Sesión</Text>
           </TouchableOpacity>

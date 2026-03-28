@@ -183,8 +183,16 @@ export const PeliculasPantalla = () => {
     <View style={styles.contenedor}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>FRED TV</Text>
-        <Text style={styles.subtitulo}>Películas</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.logo}>{perfilActivo?.nombre || 'IPTV'}</Text>
+          <Text style={styles.subtitulo}>Películas</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.headerIconBtn}
+          onPress={() => navigation.navigate('Perfil')}
+        >
+          <Ionicons name="person-circle" size={28} color={COLORS.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Barra de búsqueda y botón de categorías */}
@@ -278,10 +286,19 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 15,
     paddingTop: 50,
     paddingBottom: 10,
     backgroundColor: COLORS.background,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerIconBtn: {
+    padding: 5,
   },
   logo: {
     fontSize: 24,

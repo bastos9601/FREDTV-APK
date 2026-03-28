@@ -21,7 +21,7 @@ interface ModalDescargaAPKProps {
 
 export const ModalDescargaAPK: React.FC<ModalDescargaAPKProps> = ({ visible, onClose }) => {
   const [versionDisponible, setVersionDisponible] = React.useState('2.0.4');
-  const [urlDescarga, setUrlDescarga] = React.useState('https://github.com/bastos9601/FREDTV-APK/releases/download/v2.0.4/app.apk');
+  const [urlDescarga, setUrlDescarga] = React.useState('https://github.com/bastos9601/FREDSPRO-APK/releases/download/v2.0.4/app.apk');
 
   React.useEffect(() => {
     if (visible) {

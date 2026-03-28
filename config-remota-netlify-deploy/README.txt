@@ -16,7 +16,7 @@
 1. Abre Netlify en tu navegador:
    https://app.netlify.com
 
-2. Ve a tu proyecto "fredtv" (o el que uses)
+2. Ve a tu proyecto "FREDSPRO" (o el que uses)
 
 3. Click en "Deploys" en el menú superior
 
@@ -49,7 +49,7 @@
 
 📝 DESPUÉS DEL DEPLOY:
 
-1. Copia la URL de tu sitio (ejemplo: https://fredtv.netlify.app)
+1. Copia la URL de tu sitio (ejemplo: https://FREDSPRO.netlify.app)
 
 2. Ve a tu app y edita:
    iptv-app/src/servicios/configRemotaServicio.ts

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/constantes';
 
@@ -11,6 +11,8 @@ export const SplashPantalla: React.FC<SplashPantallaProps> = ({ onFinish }) => {
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0.3);
   const rotateAnim = new Animated.Value(0);
+  const pulseAnim = new Animated.Value(1);
+  const glowAnim = new Animated.Value(0);
 
   useEffect(() => {
     // Animación de entrada
@@ -28,17 +30,53 @@ export const SplashPantalla: React.FC<SplashPantallaProps> = ({ onFinish }) => {
       }),
     ]).start();
 
-    // Animación de rotación continua para el loader
+    // Animación de rotación continua para el logo
     Animated.loop(
       Animated.timing(rotateAnim, {
         toValue: 1,
-        duration: 2000,
+        duration: 4000,
         easing: Easing.linear,
         useNativeDriver: true,
       })
     ).start();
 
-    // Terminar después de 3 segundos
+    // Animación de pulso para el efecto de glow
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Animación de brillo
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Terminar después de 8 segundos
     const timer = setTimeout(() => {
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -47,7 +85,7 @@ export const SplashPantalla: React.FC<SplashPantallaProps> = ({ onFinish }) => {
       }).start(() => {
         onFinish();
       });
-    }, 3000);
+    }, 8000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -55,6 +93,11 @@ export const SplashPantalla: React.FC<SplashPantallaProps> = ({ onFinish }) => {
   const spin = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
+  });
+
+  const glowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.8],
   });
 
   return (
@@ -68,11 +111,34 @@ export const SplashPantalla: React.FC<SplashPantallaProps> = ({ onFinish }) => {
           },
         ]}
       >
-        {/* Logo */}
+        {/* Logo con efecto de video en movimiento */}
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="tv" size={80} color={COLORS.primary} />
-          </View>
+          {/* Glow externo animado */}
+          <Animated.View
+            style={[
+              styles.glowRing,
+              {
+                opacity: glowOpacity,
+                transform: [{ scale: pulseAnim }],
+              },
+            ]}
+          />
+          
+          {/* Logo principal */}
+          <Animated.View
+            style={[
+              styles.logoCircle,
+              {
+                transform: [{ scale: pulseAnim }],
+              },
+            ]}
+          >
+            <Image 
+              source={require('../../assets/icon.png')}
+              style={styles.logoImagen}
+              resizeMode="contain"
+            />
+          </Animated.View>
         </View>
 
         {/* Título */}
@@ -81,16 +147,6 @@ export const SplashPantalla: React.FC<SplashPantallaProps> = ({ onFinish }) => {
 
         {/* Loader */}
         <View style={styles.loaderContainer}>
-          <Animated.View
-            style={[
-              styles.loader,
-              {
-                transform: [{ rotate: spin }],
-              },
-            ]}
-          >
-            <Ionicons name="sync" size={40} color={COLORS.primary} />
-          </Animated.View>
           <Text style={styles.loadingText}>Cargando...</Text>
         </View>
 
@@ -121,21 +177,39 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 30,
-  },
-  logoCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(229, 9, 20, 0.15)',
+    position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
+  },
+  glowRing: {
+    position: 'absolute',
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: COLORS.primary,
+    opacity: 0.3,
+  },
+  logoCircle: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  logoImagen: {
+    width: 200,
+    height: 200,
+  },
+  rotatingRing: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 2,
     borderColor: COLORS.primary,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 20,
-    elevation: 10,
+    opacity: 0.4,
   },
   titulo: {
     fontSize: 56,
@@ -156,9 +230,6 @@ const styles = StyleSheet.create({
   loaderContainer: {
     alignItems: 'center',
     marginBottom: 80,
-  },
-  loader: {
-    marginBottom: 15,
   },
   loadingText: {
     fontSize: 16,

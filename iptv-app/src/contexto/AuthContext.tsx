@@ -33,9 +33,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUsuario(JSON.parse(usuarioGuardado));
         const creds = JSON.parse(credenciales);
         iptvServicio.setCredentials(creds);
+      } else {
+        // Si no hay usuario guardado, crear uno automático
+        const usuarioAutomatico = {
+          username: 'usuario_local',
+          user_id: 'local_user',
+          status: 1,
+          exp: 999999999,
+          max_connections: 1,
+          allowed_output_formats: ['m3u8', 'ts'],
+        };
+        setUsuario(usuarioAutomatico);
+        await AsyncStorage.setItem('@usuario', JSON.stringify(usuarioAutomatico));
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
+      // En caso de error, también crear usuario automático
+      const usuarioAutomatico = {
+        username: 'usuario_local',
+        user_id: 'local_user',
+        status: 1,
+        exp: 999999999,
+        max_connections: 1,
+        allowed_output_formats: ['m3u8', 'ts'],
+      };
+      setUsuario(usuarioAutomatico);
     } finally {
       setCargando(false);
     }

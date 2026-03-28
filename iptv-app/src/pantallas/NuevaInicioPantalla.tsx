@@ -464,7 +464,7 @@ export const NuevaInicioPantalla = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.logo}>FRED TV</Text>
+          <Text style={styles.logo}>{perfilActivo?.nombre || 'IPTV'}</Text>
         </View>
         <View style={styles.headerCenter}>
           <View style={styles.relojContainer}>
@@ -474,7 +474,7 @@ export const NuevaInicioPantalla = () => {
           <Text style={styles.fechaTexto}>{formatearFecha()}</Text>
         </View>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={cerrarSesion} style={styles.headerIcon}>
+          <TouchableOpacity onPress={() => navigation.navigate('SeleccionPerfil')} style={styles.headerIcon}>
             <Ionicons name="person-circle" size={24} color={COLORS.text} />
           </TouchableOpacity>
         </View>

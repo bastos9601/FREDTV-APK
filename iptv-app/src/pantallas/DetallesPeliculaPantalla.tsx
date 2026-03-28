@@ -31,6 +31,8 @@ export const DetallesPeliculaPantalla = () => {
   const [esFav, setEsFav] = useState(false);
   const [cargandoTrailer, setCargandoTrailer] = useState(false);
   const [descripcion, setDescripcion] = useState<string>('');
+  const [reparto, setReparto] = useState<any[]>([]);
+  const [peliculasSimilares, setPeliculasSimilares] = useState<any[]>([]);
 
   useEffect(() => {
     verificarFavorito();
@@ -54,10 +56,18 @@ export const DetallesPeliculaPantalla = () => {
   const buscarDescripcion = async () => {
     try {
       setCargandoTrailer(true);
-      const { pelicula: peliculaTMDB } = await tmdbServicio.buscarPeliculaConTrailer(pelicula.name);
+      const { pelicula: peliculaTMDB, reparto: repartoTMDB, similares } = await tmdbServicio.buscarPeliculaConTrailer(pelicula.name);
       
       if (peliculaTMDB && peliculaTMDB.overview) {
         setDescripcion(peliculaTMDB.overview);
+      }
+      
+      if (repartoTMDB && repartoTMDB.length > 0) {
+        setReparto(repartoTMDB.slice(0, 4)); // Mostrar solo los primeros 4
+      }
+      
+      if (similares && similares.length > 0) {
+        setPeliculasSimilares(similares.slice(0, 3)); // Mostrar solo las primeras 3
       }
     } catch (error) {
       console.error('Error buscando descripción:', error);
@@ -121,7 +131,16 @@ export const DetallesPeliculaPantalla = () => {
 
       {/* Información de la Película */}
       <View style={styles.infoContainer}>
-        <Text style={styles.titulo}>{pelicula.name}</Text>
+        <View style={styles.tituloContainer}>
+          <Text style={styles.titulo}>{pelicula.name}</Text>
+          <TouchableOpacity style={styles.favoritoIcono} onPress={manejarFavorito}>
+            <Ionicons 
+              name={esFav ? "heart" : "heart-outline"} 
+              size={32} 
+              color={esFav ? COLORS.primary : COLORS.text} 
+            />
+          </TouchableOpacity>
+        </View>
         
         <View style={styles.metaInfo}>
           {pelicula.rating && (
@@ -140,25 +159,6 @@ export const DetallesPeliculaPantalla = () => {
           )}
         </View>
 
-        {/* Botones de Acción */}
-        <View style={styles.botonesAccion}>
-          <TouchableOpacity style={styles.playButton} onPress={reproducirPelicula}>
-            <Ionicons name="play" size={24} color="#FFF" />
-            <Text style={styles.playButtonText}>Reproducir</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.favoritoButton} onPress={manejarFavorito}>
-            <Ionicons 
-              name={esFav ? "heart" : "heart-outline"} 
-              size={24} 
-              color={esFav ? COLORS.primary : "#FFF"} 
-            />
-            <Text style={styles.favoritoButtonText}>
-              {esFav ? 'En favoritos' : 'Favorito'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         {cargandoTrailer && (
           <View style={styles.loadingTrailer}>
             <ActivityIndicator size="small" color={COLORS.primary} />
@@ -168,48 +168,104 @@ export const DetallesPeliculaPantalla = () => {
 
         {/* Descripción */}
         {descripcion && (
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionTitle}>Sinopsis</Text>
-            <Text style={styles.descriptionText}>{descripcion}</Text>
-          </View>
+          <Text style={styles.descripcion}>{descripcion}</Text>
         )}
 
-        {/* Información Adicional */}
-        <View style={styles.additionalInfo}>
-          <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
-            <Text style={styles.infoText}>
-              Agregado: {pelicula.added ? new Date(parseInt(pelicula.added.toString()) * 1000).toLocaleDateString() : 'N/A'}
-            </Text>
-          </View>
-          
-          {pelicula.rating_5based && (
-            <View style={styles.infoRow}>
-              <Ionicons name="star-half-outline" size={20} color={COLORS.textSecondary} />
-              <Text style={styles.infoText}>
-                Rating: {pelicula.rating_5based.toString()}/5
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.infoRow}>
-            <Ionicons name="videocam-outline" size={20} color={COLORS.textSecondary} />
-            <Text style={styles.infoText}>
-              Formato: {pelicula.container_extension || 'N/A'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Categoría */}
+        {/* Géneros */}
         {pelicula.category_id && (
-          <View style={styles.categoryContainer}>
-            <Text style={styles.categoryLabel}>Categoría</Text>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>ID: {pelicula.category_id.toString()}</Text>
-            </View>
+          <View style={styles.generosContainer}>
+            <Text style={styles.generosLabel}>Categoría:</Text>
+            <Text style={styles.generosTexto}>ID: {pelicula.category_id.toString()}</Text>
           </View>
         )}
       </View>
+
+      {/* Botón Ver Ahora */}
+      <View style={styles.botonVerAhoraContainer}>
+        <TouchableOpacity
+          style={styles.botonVerAhora}
+          onPress={reproducirPelicula}
+        >
+          <Ionicons name="play" size={24} color="#FFF" />
+          <Text style={styles.botonVerAhoraTexto}>Ver ahora</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Reparto & Equipo */}
+      {reparto.length > 0 && (
+        <View style={styles.repartoContainer}>
+          <Text style={styles.seccionTitulo}>Reparto & Equipo</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.repartoScroll}
+          >
+            {reparto.map((actor, index) => (
+              <View key={index} style={styles.repartoItem}>
+                {actor.profile_path ? (
+                  <Image
+                    source={{ uri: `https://image.tmdb.org/t/p/w200${actor.profile_path}` }}
+                    style={styles.repartoImagen}
+                  />
+                ) : (
+                  <View style={styles.repartoImagenPlaceholder}>
+                    <Ionicons name="person" size={40} color={COLORS.textSecondary} />
+                  </View>
+                )}
+                <Text style={styles.repartoNombre} numberOfLines={2}>
+                  {actor.name}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Más como esto */}
+      {peliculasSimilares.length > 0 && (
+        <View style={styles.masComoEstoContainer}>
+          <Text style={styles.seccionTitulo}>Más como esto</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.masComoEstoScroll}
+          >
+            {peliculasSimilares.map((peliSimilar, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.masComoEstoItem}
+                onPress={() => {
+                  // Navegar a detalles de la película similar
+                  navigation.push('DetallesPelicula', {
+                    pelicula: {
+                      stream_id: peliSimilar.id,
+                      name: peliSimilar.title,
+                      stream_icon: peliSimilar.poster_path ? `https://image.tmdb.org/t/p/w500${peliSimilar.poster_path}` : '',
+                    }
+                  });
+                }}
+              >
+                <View>
+                  {peliSimilar.poster_path ? (
+                    <Image
+                      source={{ uri: `https://image.tmdb.org/t/p/w500${peliSimilar.poster_path}` }}
+                      style={styles.masComoEstoImagen}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.masComoEstoImagenPlaceholder}>
+                      <Ionicons name="film" size={40} color={COLORS.textSecondary} />
+                    </View>
+                  )}
+                  <Text style={styles.masComoEstoTitulo} numberOfLines={2}>
+                    {peliSimilar.title}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       <View style={styles.bottomSpace} />
     </ScrollView>
@@ -256,16 +312,25 @@ const styles = StyleSheet.create({
   infoContainer: {
     padding: 20,
   },
+  tituloContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
   titulo: {
+    flex: 1,
     fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: 10,
+  },
+  favoritoIcono: {
+    padding: 8,
   },
   metaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   rating: {
     flexDirection: 'row',
@@ -283,44 +348,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginRight: 15,
   },
-  botonesAccion: {
-    flexDirection: 'row',
-    marginBottom: 15,
-  },
-  playButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    marginRight: 10,
-  },
-  playButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 10,
-  },
-  favoritoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.card,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-  },
-  favoritoButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 10,
-  },
   loadingTrailer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -336,57 +363,116 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 10,
   },
-  descriptionContainer: {
-    backgroundColor: COLORS.card,
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  descriptionTitle: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  descriptionText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  additionalInfo: {
-    backgroundColor: COLORS.card,
-    padding: 20,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  infoText: {
+  descripcion: {
     color: COLORS.text,
     fontSize: 15,
-    marginLeft: 15,
+    lineHeight: 22,
+    marginBottom: 15,
   },
-  categoryContainer: {
+  generosContainer: {
     marginTop: 10,
   },
-  categoryLabel: {
+  generosLabel: {
     color: COLORS.textSecondary,
     fontSize: 14,
-    marginBottom: 10,
+    marginBottom: 5,
   },
-  categoryBadge: {
-    backgroundColor: COLORS.card,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-  },
-  categoryText: {
+  generosTexto: {
     color: COLORS.text,
     fontSize: 14,
+  },
+  botonVerAhoraContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  botonVerAhora: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  botonVerAhoraTexto: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  seccionTitulo: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 15,
+  },
+  repartoContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  repartoScroll: {
+    paddingRight: 20,
+    gap: 15,
+  },
+  repartoItem: {
+    alignItems: 'center',
+    width: 100,
+  },
+  repartoImagen: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 10,
+  },
+  repartoImagenPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  repartoNombre: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  masComoEstoContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  masComoEstoScroll: {
+    paddingRight: 20,
+    gap: 15,
+  },
+  masComoEstoItem: {
+    width: 120,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  masComoEstoImagen: {
+    width: '100%',
+    height: 180,
+    marginBottom: 8,
+  },
+  masComoEstoImagenPlaceholder: {
+    width: '100%',
+    height: 180,
+    backgroundColor: COLORS.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    borderRadius: 10,
+  },
+  masComoEstoTitulo: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 14,
   },
   bottomSpace: {
     height: 30,

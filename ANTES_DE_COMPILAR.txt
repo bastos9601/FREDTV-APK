@@ -18,7 +18,7 @@ Antes de compilar, DEBES cambiar la URL de Netlify en el código:
    private CONFIG_URL = 'https://TU-URL-REAL.netlify.app/config.json';
 
 📝 Ejemplo:
-   private CONFIG_URL = 'https://fredtv-config.netlify.app/config.json';
+   private CONFIG_URL = 'https://FREDSPRO-config.netlify.app/config.json';
 
 
 🔍 ¿Cómo Obtener tu URL de Netlify?

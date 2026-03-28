@@ -19,17 +19,18 @@ export const PerfilActivoProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [perfilActivo, setPerfilActivo] = useState<PerfilActivo | null>(null);
 
   useEffect(() => {
-    cargarPerfilGuardado();
+    // No cargar perfil guardado al iniciar la app
+    // Esto asegura que siempre muestre la pantalla de selección de perfiles
+    limpiarPerfilAlIniciar();
   }, []);
 
-  const cargarPerfilGuardado = async () => {
+  const limpiarPerfilAlIniciar = async () => {
     try {
-      const perfilGuardado = await AsyncStorage.getItem('perfilActivo');
-      if (perfilGuardado) {
-        setPerfilActivo(JSON.parse(perfilGuardado));
-      }
+      // Limpiar el perfil activo al iniciar la app
+      setPerfilActivo(null);
+      await AsyncStorage.removeItem('perfilActivo');
     } catch (error) {
-      console.error('Error cargando perfil guardado:', error);
+      console.error('Error limpiando perfil al iniciar:', error);
     }
   };
 

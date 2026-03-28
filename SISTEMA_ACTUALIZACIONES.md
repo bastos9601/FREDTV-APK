@@ -10,12 +10,12 @@ El sistema verifica automáticamente si hay actualizaciones disponibles comparan
 
 Debes subir el archivo `version.json` a la raíz de tu repositorio:
 ```
-https://github.com/bastos9601/FREDTV-APK/
+https://github.com/bastos9601/FREDSPRO-APK/
 ```
 
 El archivo debe estar en:
 ```
-https://raw.githubusercontent.com/bastos9601/FREDTV-APK/main/version.json
+https://raw.githubusercontent.com/bastos9601/FREDSPRO-APK/main/version.json
 ```
 
 ### 2. Estructura del `version.json`
@@ -23,7 +23,7 @@ https://raw.githubusercontent.com/bastos9601/FREDTV-APK/main/version.json
 ```json
 {
   "version": "2.0.5",
-  "downloadUrl": "https://github.com/bastos9601/FREDTV-APK/releases/download/v2.0.5/app.apk",
+  "downloadUrl": "https://github.com/bastos9601/FREDSPRO-APK/releases/download/v2.0.5/app.apk",
   "releaseNotes": "Nueva versión con mejoras",
   "releaseDate": "2026-01-05"
 }
@@ -57,7 +57,7 @@ eas build --platform android --profile production
 ```
 
 ### Paso 3: Subir a GitHub Releases
-1. Ve a: https://github.com/bastos9601/FREDTV-APK/releases
+1. Ve a: https://github.com/bastos9601/FREDSPRO-APK/releases
 2. Crea un nuevo release con tag `v2.0.5`
 3. Sube el archivo `app.apk`
 
@@ -65,7 +65,7 @@ eas build --platform android --profile production
 ```json
 {
   "version": "2.0.5",
-  "downloadUrl": "https://github.com/bastos9601/FREDTV-APK/releases/download/v2.0.5/app.apk",
+  "downloadUrl": "https://github.com/bastos9601/FREDSPRO-APK/releases/download/v2.0.5/app.apk",
   "releaseNotes": "- Corrección de bugs\n- Mejoras de rendimiento\n- Nueva interfaz",
   "releaseDate": "2026-01-05"
 }

@@ -13,7 +13,7 @@ export interface ConfigRemota {
 
 class ConfigRemotaServicio {
   // URL de configuración remota en Netlify
-  private CONFIG_URL = 'https://panelfredtv.netlify.app/config.json';
+  private CONFIG_URL = 'https://panelFREDSPRO.netlify.app/config.json';
   
   private CACHE_KEY = '@config_remota';
   private LAST_CHECK_KEY = '@config_last_check';

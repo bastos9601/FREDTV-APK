@@ -67,6 +67,12 @@ export const ReproductorProfesional = () => {
   const [pistasAudio, setPistasAudio] = useState<any[]>([]);
   const [pistaAudioSeleccionada, setPistaAudioSeleccionada] = useState<number>(0);
   const [esFav, setEsFav] = useState(false);
+  const [mostrarBotonOmitirIntro, setMostrarBotonOmitirIntro] = useState(false);
+  const [introDetectada, setIntroDetectada] = useState(false);
+  const [tiempoUltimoSonido, setTiempoUltimoSonido] = useState(0);
+  const [velocidadConexion, setVelocidadConexion] = useState('0 Kb/s');
+  const [velocidadReproduccion, setVelocidadReproduccion] = useState(1);
+  const [relacionAspecto, setRelacionAspecto] = useState('16:9');
   const barraRef = useRef<View>(null);
   const fadeAnim = useState(new Animated.Value(1))[0];
 
@@ -101,6 +107,17 @@ export const ReproductorProfesional = () => {
     return () => {
       Brightness.setBrightnessAsync(brilloOriginal).catch(console.error);
     };
+  }, []);
+
+  // Simular velocidad de conexión
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const velocidades = ['250 Kb/s', '500 Kb/s', '882.1 Kb/s', '1.2 Mb/s', '2.5 Mb/s'];
+      const velocidadAleatoria = velocidades[Math.floor(Math.random() * velocidades.length)];
+      setVelocidadConexion(velocidadAleatoria);
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Obtener pistas de audio disponibles
@@ -166,6 +183,33 @@ export const ReproductorProfesional = () => {
     const nuevoEstado = await toggleFavorito(favorito, usuarioId || undefined, perfilActivo?.id);
     setEsFav(nuevoEstado);
   };
+
+  const omitirIntro = () => {
+    // Saltar a los 90 segundos (fin típico del opening)
+    if (player) {
+      player.currentTime = 90;
+    }
+    setMostrarBotonOmitirIntro(false);
+    setIntroDetectada(false);
+  };
+
+  // Detectar automáticamente intro basado en tiempo
+  // Los openings típicamente comienzan entre 0-5 segundos y duran 60-90 segundos
+  useEffect(() => {
+    if (serie && !esTvEnVivo) {
+      // Mostrar botón cuando comienza el opening (primeros 5 segundos)
+      // y mantenerlo visible hasta los 90 segundos
+      if (posicion >= 0 && posicion <= 90) {
+        setMostrarBotonOmitirIntro(true);
+      } else {
+        // Ocultar después de los 90 segundos (fin del opening)
+        setMostrarBotonOmitirIntro(false);
+        setIntroDetectada(false);
+      }
+    } else {
+      setMostrarBotonOmitirIntro(false);
+    }
+  }, [posicion, serie, esTvEnVivo]);
 
   // Cargar información del siguiente episodio
   useEffect(() => {
@@ -482,7 +526,7 @@ export const ReproductorProfesional = () => {
   };
 
   const volverACanales = async () => {
-    // Abrir modal de canales
+    // Abrir modal de canales relacionados
     setModalCanales(true);
     setCargandoCanales(true);
     try {
@@ -492,12 +536,35 @@ export const ReproductorProfesional = () => {
       ]);
       
       setCanalesTv(canales);
-      setCanalesFiltrados(canales);
-      setCategoriasTv([
-        { category_id: 'all', category_name: 'Todos', parent_id: 0 },
-        ...categorias
-      ]);
-      setCategoriaSeleccionada('all');
+      
+      // Si estamos reproduciendo un canal, filtrar SOLO por su categoría
+      if (streamId) {
+        const canalActual = canales.find(c => c.stream_id === streamId);
+        if (canalActual && canalActual.category_id) {
+          // Encontrar la categoría actual
+          const categoriaActual = categorias.find(cat => cat.category_id === canalActual.category_id);
+          
+          // Solo mostrar la categoría del canal actual (sin "Todos los Canales")
+          setCategoriasTv(categoriaActual ? [categoriaActual] : []);
+          
+          // Filtrar por la categoría del canal actual
+          setCategoriaSeleccionada(canalActual.category_id);
+          const canalesRelacionados = canales.filter(canal => 
+            canal.category_id === canalActual.category_id
+          );
+          setCanalesFiltrados(canalesRelacionados);
+        } else {
+          // Si no se encuentra la categoría, mostrar mensaje de error
+          setCategoriasTv([]);
+          setCategoriaSeleccionada('');
+          setCanalesFiltrados([]);
+        }
+      } else {
+        // Si no hay canal actual, no mostrar nada
+        setCategoriasTv([]);
+        setCategoriaSeleccionada('');
+        setCanalesFiltrados([]);
+      }
     } catch (error) {
       Alert.alert('Error', 'No se pudieron cargar los canales');
     } finally {
@@ -766,35 +833,11 @@ export const ReproductorProfesional = () => {
               <Text style={styles.titulo} numberOfLines={1}>
                 {titulo}
               </Text>
+              <View style={styles.headerInfo}>
+                <Ionicons name="signal" size={16} color="#FFF" />
+                <Text style={styles.velocidadConexion}>{velocidadConexion}</Text>
+              </View>
               <View style={styles.headerButtons}>
-                {esTvEnVivo && (
-                  <>
-                    <TouchableOpacity 
-                      style={styles.botonHeader}
-                      onPress={manejarFavorito}
-                    >
-                      <Ionicons 
-                        name={esFav ? "heart" : "heart-outline"} 
-                        size={24} 
-                        color={esFav ? COLORS.primary : "#FFF"} 
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.botonHeader}
-                      onPress={volverACanales}
-                    >
-                      <Ionicons name="tv" size={24} color="#FFF" />
-                    </TouchableOpacity>
-                  </>
-                )}
-                {serie && (
-                  <TouchableOpacity 
-                    style={styles.botonHeader}
-                    onPress={abrirSelectorEpisodios}
-                  >
-                    <Ionicons name="list" size={24} color="#FFF" />
-                  </TouchableOpacity>
-                )}
                 <TouchableOpacity 
                   style={styles.botonHeader}
                   onPress={toggleBloqueo}
@@ -805,80 +848,88 @@ export const ReproductorProfesional = () => {
                     color={bloqueado ? COLORS.primary : "#FFF"} 
                   />
                 </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.botonHeader}
+                  onPress={() => setModalConfiguracion(true)}
+                >
+                  <Ionicons name="settings" size={24} color="#FFF" />
+                </TouchableOpacity>
               </View>
             </View>
 
             {/* Controles Centrales */}
             <View style={styles.controlesCentro}>
-              {/* Solo mostrar botones de adelantar/retroceder si NO es TV en vivo */}
-              {!esTvEnVivo && (
-                <TouchableOpacity
-                  style={styles.botonControl}
-                  onPress={() => adelantar(-10)}
-                >
-                  <Ionicons name="play-back" size={40} color="#FFF" />
-                  <Text style={styles.textoControl}>10s</Text>
-                </TouchableOpacity>
-              )}
+                {/* Botones de control */}
+                <View style={styles.botonesControl}>
+                  {!esTvEnVivo && (
+                    <TouchableOpacity
+                      style={styles.botonControl}
+                      onPress={() => adelantar(-10)}
+                    >
+                      <Ionicons name="play-back" size={40} color="#FFF" />
+                      <Text style={styles.textoControl}>-10s</Text>
+                    </TouchableOpacity>
+                  )}
 
-              <TouchableOpacity
-                style={styles.botonPlayPausa}
-                onPress={toggleReproduccion}
-              >
-                <Ionicons
-                  name={reproduciendo ? 'pause' : 'play'}
-                  size={60}
-                  color="#FFF"
-                />
-              </TouchableOpacity>
-
-              {!esTvEnVivo && (
-                <TouchableOpacity
-                  style={styles.botonControl}
-                  onPress={() => adelantar(10)}
-                >
-                  <Ionicons name="play-forward" size={40} color="#FFF" />
-                  <Text style={styles.textoControl}>10s</Text>
-                </TouchableOpacity>
-              )}
-              
-              {/* Para TV en vivo, mostrar indicador LIVE */}
-              {esTvEnVivo && (
-                <View style={styles.liveIndicador}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveTexto}>EN VIVO</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Footer con Barra de Progreso */}
-            <View style={styles.footer}>
-              {/* Barra de Progreso - Solo para contenido bajo demanda */}
-              {!esTvEnVivo && (
-                <View style={styles.progresoContainer}>
-                  <Text style={styles.tiempo}>
-                    {formatearTiempo(posicion)}
-                  </Text>
-                  <Pressable 
-                    ref={barraRef}
-                    style={styles.barraPrincipal}
-                    onPress={manejarToqueBarra}
+                  <TouchableOpacity
+                    style={styles.botonPlayPausa}
+                    onPress={toggleReproduccion}
                   >
-                    <View style={styles.barraFondo}>
-                      <View
-                        style={[
-                          styles.barraProgreso, 
-                          { width: `${calcularProgreso()}%` }
-                        ]}
-                      />
-                    </View>
-                  </Pressable>
-                  <Text style={styles.tiempo}>
-                    {duracion > 0 ? formatearTiempo(duracion) : '--:--'}
-                  </Text>
+                    <Ionicons
+                      name={reproduciendo ? 'pause' : 'play'}
+                      size={60}
+                      color="#FFF"
+                    />
+                  </TouchableOpacity>
+
+                  {!esTvEnVivo && (
+                    <TouchableOpacity
+                      style={styles.botonControl}
+                      onPress={() => adelantar(10)}
+                    >
+                      <Ionicons name="play-forward" size={40} color="#FFF" />
+                      <Text style={styles.textoControl}>+10s</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-              )}
-              
+                
+                {/* Para TV en vivo, mostrar indicador LIVE */}
+                {esTvEnVivo && (
+                  <View style={styles.liveIndicador}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveTexto}>EN VIVO</Text>
+                  </View>
+                )}
+              </View>
+
+            {/* Barra de Progreso */}
+            {!esTvEnVivo && (
+              <View style={styles.progresoContainer}>
+                <Text style={styles.tiempo}>
+                  {formatearTiempo(posicion)}
+                </Text>
+                <Pressable 
+                  ref={barraRef}
+                  style={styles.barraPrincipal}
+                  onPress={manejarToqueBarra}
+                >
+                  <View style={styles.barraFondo}>
+                    <View
+                      style={[
+                        styles.barraProgreso, 
+                        { width: `${calcularProgreso()}%` }
+                      ]}
+                    />
+                  </View>
+                </Pressable>
+                <Text style={styles.tiempo}>
+                  {duracion > 0 ? formatearTiempo(duracion) : '--:--'}
+                </Text>
+              </View>
+            )}
+
+            {/* Footer con Controles Inferiores */}
+            <View style={styles.footer}>
               {/* Para TV en vivo, mostrar solo indicador de tiempo */}
               {esTvEnVivo && (
                 <View style={styles.liveInfoContainer}>
@@ -891,84 +942,122 @@ export const ReproductorProfesional = () => {
 
               {/* Controles Inferiores */}
               <View style={styles.controlesInferiores}>
-                <View style={styles.controlesIzquierda}>
+                {/* Botón Episodios - Solo para series */}
+                {serie && !esTvEnVivo && (
                   <TouchableOpacity
                     style={styles.botonInferior}
-                    onPress={() => cambiarVolumen(-0.1)}
+                    onPress={abrirSelectorEpisodios}
                   >
-                    <Ionicons name="volume-low" size={24} color="#FFF" />
+                    <Ionicons name="list" size={20} color="#FFF" />
+                    <Text style={styles.textoBotonInferior}>Episodios</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.botonInferior}
-                    onPress={() => cambiarVolumen(0.1)}
-                  >
-                    <Ionicons name="volume-high" size={24} color="#FFF" />
-                  </TouchableOpacity>
-                </View>
+                )}
 
-                <View style={styles.controlesDerecha}>
-                  <TouchableOpacity 
-                    style={styles.botonInferior}
-                    onPress={abrirModalConfiguracion}
-                  >
-                    <Ionicons name="settings-outline" size={24} color="#FFF" />
-                  </TouchableOpacity>
+                {/* Botón Canales Relacionados - Solo para TV en vivo */}
+                {esTvEnVivo && (
                   <TouchableOpacity
                     style={styles.botonInferior}
-                    onPress={togglePantallaCompleta}
+                    onPress={volverACanales}
                   >
-                    <Ionicons
-                      name={pantallaCompleta ? 'contract' : 'expand'}
-                      size={24}
-                      color="#FFF"
-                    />
+                    <Ionicons name="tv" size={20} color="#FFF" />
+                    <Text style={styles.textoBotonInferior}>Canales Relacionados</Text>
                   </TouchableOpacity>
-                </View>
+                )}
+
+                <TouchableOpacity
+                  style={styles.botonInferior}
+                  onPress={() => {
+                    const opciones = ['4:3', '16:9', '21:9'];
+                    const indiceActual = opciones.indexOf(relacionAspecto);
+                    const nuevoIndice = (indiceActual + 1) % opciones.length;
+                    setRelacionAspecto(opciones[nuevoIndice]);
+                  }}
+                >
+                  <Ionicons name="crop" size={20} color="#FFF" />
+                  <Text style={styles.textoBotonInferior}>Relación de asp...</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.botonInferior}
+                  onPress={() => {
+                    const velocidades = [0.5, 0.75, 1, 1.25, 1.5, 2];
+                    const indiceActual = velocidades.indexOf(velocidadReproduccion);
+                    const nuevoIndice = (indiceActual + 1) % velocidades.length;
+                    setVelocidadReproduccion(velocidades[nuevoIndice]);
+                    if (player) {
+                      player.playbackRate = velocidades[nuevoIndice];
+                    }
+                  }}
+                >
+                  <Ionicons name="speedometer" size={20} color="#FFF" />
+                  <Text style={styles.textoBotonInferior}>Velocidad ({velocidadReproduccion}x)</Text>
+                </TouchableOpacity>
+
+                {/* Botón Siguiente Episodio - Solo para series */}
+                {serie && !esTvEnVivo && (
+                  <TouchableOpacity
+                    style={styles.botonInferior}
+                    onPress={reproducirSiguienteEpisodio}
+                  >
+                    <Ionicons name="play-skip-forward" size={20} color="#FFF" />
+                    <Text style={styles.textoBotonInferior}>Siguiente episod...</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </Animated.View>
         )}
       </TouchableOpacity>
 
-      {/* Modal de Episodios Estilo Netflix */}
+      {/* Modal de Episodios Simplificado */}
       <Modal
         visible={modalEpisodios}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={cerrarModalEpisodios}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            {/* Header del Modal */}
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitulo}>{serie?.name}</Text>
-                <Text style={styles.modalSubtitulo}>Selecciona un episodio</Text>
+        <View style={styles.modalEpisodiosOverlayFull}>
+          <View style={styles.modalEpisodiosProfesional}>
+            {/* Header Simple sin imagen */}
+            <View style={styles.modalEpisodiosHeaderSimple}>
+              <View style={styles.modalEpisodiosHeaderContenidoSimple}>
+                <View style={styles.modalEpisodiosTituloHeaderSimple}>
+                  <Text style={styles.modalEpisodiosTituloTextoSimple}>
+                    Episodios
+                  </Text>
+                  <Text style={styles.modalEpisodiosSubtituloTextoSimple}>
+                    {(episodiosSerie[temporadaModal] || []).length} disponibles
+                  </Text>
+                </View>
+
+                <TouchableOpacity 
+                  onPress={cerrarModalEpisodios} 
+                  style={styles.modalEpisodiosBotonCerrarHeaderSimple}
+                >
+                  <Ionicons name="close" size={32} color="#FFF" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={cerrarModalEpisodios} style={styles.modalBotonCerrar}>
-                <Ionicons name="close" size={32} color={COLORS.text} />
-              </TouchableOpacity>
             </View>
 
             {/* Selector de Temporadas */}
-            <View style={styles.modalTemporadas}>
+            <View style={styles.modalEpisodiosTemporadasContainer}>
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.modalTemporadasScroll}
+                contentContainerStyle={styles.modalEpisodiosTemporadasContent}
               >
                 {Object.keys(episodiosSerie).sort((a, b) => parseInt(a) - parseInt(b)).map((temp) => (
                   <TouchableOpacity
                     key={temp}
                     style={[
-                      styles.modalTemporadaBtn,
-                      temp === temporadaModal && styles.modalTemporadaBtnActiva
+                      styles.modalEpisodiosTemporadaBtnPro,
+                      temp === temporadaModal && styles.modalEpisodiosTemporadaBtnProActiva
                     ]}
                     onPress={() => setTemporadaModal(temp)}
                   >
                     <Text style={[
-                      styles.modalTemporadaTexto,
-                      temp === temporadaModal && styles.modalTemporadaTextoActivo
+                      styles.modalEpisodiosTemporadaTextoPro,
+                      temp === temporadaModal && styles.modalEpisodiosTemporadaTextoProActivo
                     ]}>
                       Temporada {temp}
                     </Text>
@@ -979,201 +1068,243 @@ export const ReproductorProfesional = () => {
 
             {/* Lista de Episodios */}
             {cargandoEpisodios ? (
-              <View style={styles.modalCargando}>
+              <View style={styles.modalEpisodiosCargando}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
               </View>
             ) : (
-              <FlatList
-                data={episodiosSerie[temporadaModal] || []}
-                keyExtractor={(item) => item.id}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.modalEpisodiosLista}
-                renderItem={({ item, index }) => {
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.modalEpisodiosListaContent}
+                scrollEventThrottle={16}
+              >
+                {(episodiosSerie[temporadaModal] || []).map((item, index) => {
                   const esActual = temporadaModal === temporada && item.episode_num === parseInt(episodio);
                   return (
                     <TouchableOpacity
+                      key={item.id}
                       style={[
-                        styles.modalEpisodioItem,
-                        esActual && styles.modalEpisodioItemActivo
+                        styles.modalEpisodioItemProNuevo,
+                        esActual && styles.modalEpisodioItemProNuevoActivo,
+                        index === 0 && styles.modalEpisodioItemProPrimero,
+                        index === (episodiosSerie[temporadaModal] || []).length - 1 && styles.modalEpisodioItemProUltimo
                       ]}
                       onPress={() => seleccionarEpisodio(item)}
+                      activeOpacity={0.8}
                     >
-                      <View style={styles.modalEpisodioNumero}>
-                        <Text style={styles.modalEpisodioNumeroTexto}>
-                          {item.episode_num}
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.modalEpisodioInfo}>
-                        <View style={styles.modalEpisodioTituloContainer}>
-                          <Text style={styles.modalEpisodioTitulo} numberOfLines={1}>
-                            {item.title || `Episodio ${item.episode_num}`}
-                          </Text>
-                          {esActual && (
-                            <View style={styles.modalReproduciendoBadge}>
-                              <Ionicons name="play" size={12} color="#FFF" />
-                              <Text style={styles.modalReproduciendoTexto}>Reproduciendo</Text>
-                            </View>
-                          )}
-                        </View>
-                        
-                        {item.info?.duration && (
-                          <Text style={styles.modalEpisodoDuracion}>
-                            {item.info.duration}
-                          </Text>
+                      {/* Contenedor de Imagen */}
+                      <View style={styles.modalEpisodioImagenProNuevo}>
+                        {item.info?.movie_image ? (
+                          <Image
+                            source={{ uri: item.info.movie_image }}
+                            style={styles.modalEpisodioImagenProImgNuevo}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={styles.modalEpisodioImagenProPlaceholderNuevo}>
+                            <Ionicons name="film" size={50} color={COLORS.primary} />
+                          </View>
                         )}
                         
+                        {/* Overlay con Play */}
+                        <View style={styles.modalEpisodioImagenProOverlayNuevo}>
+                          <View style={styles.modalEpisodioPlayButtonNuevo}>
+                            <Ionicons name="play" size={32} color="#FFF" />
+                          </View>
+                        </View>
+
+                        {/* Duración en esquina inferior izquierda */}
+                        {item.info?.duration && (
+                          <View style={styles.modalEpisodioDuracionBadge}>
+                            <Text style={styles.modalEpisodioDuracionBadgeTexto}>
+                              {item.info.duration}
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Rating en esquina superior derecha */}
+                        {item.info?.rating && (
+                          <View style={styles.modalEpisodioRatingBadge}>
+                            <Ionicons name="star" size={14} color="#FFD700" />
+                            <Text style={styles.modalEpisodioRatingBadgeTexto}>
+                              {item.info.rating}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Info del Episodio */}
+                      <View style={styles.modalEpisodioInfoProNuevo}>
+                        <Text style={styles.modalEpisodioNumeroProNuevo}>
+                          Episodio {item.episode_num}
+                        </Text>
+                        <Text style={styles.modalEpisodioTituloProNuevo} numberOfLines={2}>
+                          {item.title || `Episodio ${item.episode_num}`}
+                        </Text>
+                        
                         {item.info?.plot && (
-                          <Text style={styles.modalEpisodioDescripcion} numberOfLines={2}>
+                          <Text style={styles.modalEpisodioDescripcionProNuevo} numberOfLines={3}>
                             {item.info.plot}
                           </Text>
                         )}
                       </View>
 
-                      <Ionicons 
-                        name={esActual ? "checkmark-circle" : "play-circle"} 
-                        size={32} 
-                        color={esActual ? COLORS.primary : COLORS.textSecondary} 
-                      />
+                      {/* Indicador de Reproducción */}
+                      {esActual && (
+                        <View style={styles.modalEpisodioIndicadorActualNuevo}>
+                          <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+                        </View>
+                      )}
                     </TouchableOpacity>
                   );
-                }}
-              />
+                })}
+              </ScrollView>
             )}
           </View>
         </View>
       </Modal>
 
-      {/* Modal de Canales de TV */}
+      {/* Modal de Canales Relacionados */}
       <Modal
         visible={modalCanales}
         animationType="slide"
         transparent={true}
         onRequestClose={cerrarModalCanales}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+        <View style={styles.modalCanalesOverlay}>
+          <View style={styles.modalCanalesContainer}>
             {/* Header del Modal */}
-            <View style={styles.modalHeader}>
+            <View style={styles.modalCanalesHeader}>
               <View>
-                <Text style={styles.modalTitulo}>Canales de TV</Text>
-                <Text style={styles.modalSubtitulo}>
-                  {categoriaSeleccionada === 'all' 
-                    ? `${canalesFiltrados.length} canales` 
-                    : `${canalesFiltrados.length} canales en esta categoría`}
+                <Text style={styles.modalCanalesTitulo}>
+                  {categoriasTv.length > 0 ? categoriasTv[0].category_name : 'Canales Relacionados'}
+                </Text>
+                <Text style={styles.modalCanalesSubtitulo}>
+                  {canalesFiltrados.length} canales en esta categoría
                 </Text>
               </View>
-              <TouchableOpacity onPress={cerrarModalCanales} style={styles.modalBotonCerrar}>
+              <TouchableOpacity onPress={cerrarModalCanales} style={styles.modalCanalesBotonCerrar}>
                 <Ionicons name="close" size={32} color={COLORS.text} />
               </TouchableOpacity>
             </View>
 
-            {/* Selector de Categorías */}
-            <View style={styles.modalTemporadas}>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.modalTemporadasScroll}
-              >
-                {categoriasTv.map((cat) => {
-                  const isSelected = cat.category_id === categoriaSeleccionada;
-                  const cantidadCanales = cat.category_id === 'all' 
-                    ? canalesTv.length 
-                    : canalesTv.filter(c => c.category_id === cat.category_id).length;
-                  
-                  return (
-                    <TouchableOpacity
-                      key={cat.category_id}
-                      style={[
-                        styles.modalTemporadaBtn,
-                        isSelected && styles.modalTemporadaBtnActiva
-                      ]}
-                      onPress={() => filtrarCanalesPorCategoria(cat.category_id)}
-                    >
-                      <Text style={[
-                        styles.modalTemporadaTexto,
-                        isSelected && styles.modalTemporadaTextoActivo
-                      ]}>
-                        {cat.category_name}
-                      </Text>
-                      <Text style={[
-                        styles.modalCategoriaCantidad,
-                        isSelected && styles.modalCategoriaCantidadActiva
-                      ]}>
-                        {cantidadCanales}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Lista de Canales */}
+            {/* Contenido con Scroll Vertical */}
             {cargandoCanales ? (
-              <View style={styles.modalCargando}>
+              <View style={styles.modalCanalesCargando}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.modalCanalesCargandoTexto}>Cargando canales...</Text>
               </View>
             ) : (
-              <FlatList
-                data={canalesFiltrados}
-                keyExtractor={(item) => item.stream_id.toString()}
+              <ScrollView 
+                style={styles.modalCanalesScroll}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.modalEpisodiosLista}
-                renderItem={({ item }) => {
-                  const esActual = streamId === item.stream_id;
-                  return (
-                    <TouchableOpacity
-                      style={[
-                        styles.modalCanalItem,
-                        esActual && styles.modalCanalItemActivo
-                      ]}
-                      onPress={() => seleccionarCanal(item)}
-                    >
-                      <View style={styles.modalCanalIcono}>
-                        {item.stream_icon ? (
-                          <Image 
-                            source={{ uri: item.stream_icon }}
-                            style={styles.modalCanalLogo}
-                            resizeMode="contain"
-                          />
-                        ) : (
-                          <Ionicons 
-                            name="tv" 
-                            size={24} 
-                            color={esActual ? COLORS.primary : COLORS.text} 
-                          />
-                        )}
-                      </View>
-                      
-                      <View style={styles.modalEpisodioInfo}>
-                        <View style={styles.modalEpisodioTituloContainer}>
-                          <Text style={styles.modalCanalNombre} numberOfLines={1}>
-                            {item.name}
-                          </Text>
-                          {esActual && (
-                            <View style={styles.modalReproduciendoBadge}>
-                              <Ionicons name="play" size={12} color="#FFF" />
-                              <Text style={styles.modalReproduciendoTexto}>En vivo</Text>
-                            </View>
-                          )}
-                        </View>
-                        
-                        {item.category_name && (
-                          <Text style={styles.modalEpisodoDuracion}>
-                            {item.category_name}
-                          </Text>
-                        )}
-                      </View>
-
-                      <Ionicons 
-                        name={esActual ? "checkmark-circle" : "play-circle"} 
-                        size={32} 
-                        color={esActual ? COLORS.primary : COLORS.textSecondary} 
-                      />
+                contentContainerStyle={styles.modalCanalesScrollContent}
+              >
+                {/* Sección de Favoritos */}
+                <View style={styles.modalCanalesSeccion}>
+                  <View style={styles.modalCanalesSeccionHeader}>
+                    <View style={styles.modalCanalesSeccionTituloContainer}>
+                      <Ionicons name="heart" size={20} color={COLORS.primary} />
+                      <Text style={styles.modalCanalesSeccionTitulo}>Favoritos (0)</Text>
+                    </View>
+                    <TouchableOpacity>
+                      <Text style={styles.modalCanalesVerTodo}>Ver Todo</Text>
                     </TouchableOpacity>
-                  );
-                }}
-              />
+                  </View>
+                  
+                  <View style={styles.modalCanalesFavoritosVacio}>
+                    <Ionicons name="heart-outline" size={40} color={COLORS.textSecondary} />
+                    <Text style={styles.modalCanalesFavoritosVacioTexto}>
+                      No tienes canales favoritos
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Sección de Canales Relacionados */}
+                {canalesFiltrados.length > 0 ? (
+                  <View style={styles.modalCanalesSeccion}>
+                    <View style={styles.modalCanalesSeccionHeader}>
+                      <View style={styles.modalCanalesSeccionTituloContainer}>
+                        <Ionicons name="tv" size={20} color={COLORS.primary} />
+                        <Text style={styles.modalCanalesSeccionTitulo}>
+                          {categoriasTv.length > 0 ? categoriasTv[0].category_name : 'Canales'} ({canalesFiltrados.length})
+                        </Text>
+                      </View>
+                      <TouchableOpacity>
+                        <Text style={styles.modalCanalesVerTodo}>Ver Todo</Text>
+                      </TouchableOpacity>
+                    </View>
+                    
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.modalCanalesCarrusel}
+                    >
+                      {canalesFiltrados.map((canal) => {
+                        const esActual = streamId === canal.stream_id;
+                        return (
+                          <TouchableOpacity
+                            key={canal.stream_id}
+                            style={[
+                              styles.modalCanalesCanalCard,
+                              esActual && styles.modalCanalesCanalCardActivo
+                            ]}
+                            onPress={() => seleccionarCanal(canal)}
+                          >
+                            <View style={styles.modalCanalesCanalImagen}>
+                              {canal.stream_icon ? (
+                                <Image 
+                                  source={{ uri: canal.stream_icon }}
+                                  style={styles.modalCanalesCanalImg}
+                                  resizeMode="contain"
+                                />
+                              ) : (
+                                <View style={styles.modalCanalesCanalPlaceholder}>
+                                  <Ionicons name="tv" size={30} color={COLORS.textSecondary} />
+                                </View>
+                              )}
+                              
+                              {/* Indicador de canal actual */}
+                              {esActual && (
+                                <View style={styles.modalCanalesCanalActiveBadge}>
+                                  <Ionicons name="play" size={12} color="#FFF" />
+                                </View>
+                              )}
+                              
+                              {/* Botón de favorito */}
+                              <TouchableOpacity 
+                                style={styles.modalCanalesCanalFavBtn}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  // Aquí iría la lógica de favoritos
+                                }}
+                              >
+                                <Ionicons name="heart-outline" size={16} color="#FFF" />
+                              </TouchableOpacity>
+                            </View>
+                            
+                            <View style={styles.modalCanalesCanalInfo}>
+                              <Text style={styles.modalCanalesCanalNombre} numberOfLines={2}>
+                                {canal.name}
+                              </Text>
+                              <Text style={styles.modalCanalesCanalEstado}>
+                                {esActual ? 'Reproduciendo ahora' : 'No se encontró ningún programa'}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                ) : (
+                  <View style={styles.modalCanalesFavoritosVacio}>
+                    <Ionicons name="tv-outline" size={40} color={COLORS.textSecondary} />
+                    <Text style={styles.modalCanalesFavoritosVacioTexto}>
+                      No se encontraron canales relacionados
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
             )}
           </View>
         </View>
@@ -1356,10 +1487,31 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
   botonHeader: {
     padding: 5,
-    marginLeft: 10,
+  },
+  botonOmitirIntroHeader: {
+    backgroundColor: 'rgba(229, 9, 20, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  textoOmitirIntroHeader: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  botonDetectarIntro: {
+    backgroundColor: 'rgba(229, 9, 20, 0.3)',
+    borderRadius: 12,
+    padding: 8,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
   titulo: {
     flex: 1,
@@ -1374,6 +1526,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  controlesLayout: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+  },
+  controlesLateral: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  botonLateral: {
+    padding: 10,
+  },
+  sliderVertical: {
+    height: 150,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sliderVerticalTrack: {
+    width: 40,
+    height: 150,
+  },
+  botonesControl: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+  },
   botonControl: {
     alignItems: 'center',
     marginHorizontal: 20,
@@ -1382,6 +1564,24 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     marginTop: 5,
+  },
+  botonOmitirIntro: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(229, 9, 20, 0.9)',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 100,
+  },
+  textoOmitirIntro: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   botonPlayPausa: {
     width: 80,
@@ -1394,11 +1594,12 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 15,
     paddingBottom: 20,
+    gap: 10,
   },
   progresoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 0,
   },
   tiempo: {
     color: '#FFF',
@@ -1423,8 +1624,10 @@ const styles = StyleSheet.create({
   },
   controlesInferiores: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
+    paddingHorizontal: 10,
+    gap: 5,
   },
   controlesIzquierda: {
     flexDirection: 'row',
@@ -1433,8 +1636,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   botonInferior: {
-    padding: 5,
-    marginHorizontal: 7,
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   botonBloqueoFlotante: {
     position: 'absolute',
@@ -1535,13 +1740,14 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.95)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContainer: {
     backgroundColor: COLORS.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: '85%',
+    borderRadius: 20,
+    width: '90%',
+    height: '70%',
     paddingBottom: 20,
   },
   modalHeader: {
@@ -1607,6 +1813,90 @@ const styles = StyleSheet.create({
   modalEpisodiosLista: {
     paddingHorizontal: 20,
     paddingTop: 10,
+  },
+  modalEpisodiosGridLista: {
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+    gap: 10,
+  },
+  modalEpisodioGridItem: {
+    width: 150,
+    marginHorizontal: 5,
+    marginBottom: 0,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: COLORS.card,
+  },
+  modalEpisodioGridItemActivo: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  episodioGridImageContainer: {
+    width: '100%',
+    height: 140,
+    backgroundColor: COLORS.border,
+    position: 'relative',
+  },
+  episodioGridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  episodioGridImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  episodioGridOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  episodioGridInfo: {
+    padding: 10,
+  },
+  episodioGridHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  episodioGridNumero: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  episodioGridRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  episodioGridRatingText: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+  },
+  episodioGridTitulo: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  episodioGridDuracion: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  episodioGridDescripcion: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    lineHeight: 14,
   },
   modalEpisodioItem: {
     flexDirection: 'row',
@@ -1678,51 +1968,161 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     opacity: 0.7,
   },
-  // Estilos específicos para modal de canales
-  modalCanalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+  // Estilos para modal de canales relacionados con carrusel
+  modalCanalesOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'flex-end',
   },
-  modalCanalItemActivo: {
-    borderColor: COLORS.primary,
-    backgroundColor: 'rgba(33, 150, 243, 0.08)',
-  },
-  modalCanalIcono: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+  modalCanalesContainer: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    height: '85%',
     overflow: 'hidden',
   },
-  modalCanalLogo: {
+  modalCanalesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalCanalesTitulo: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  modalCanalesSubtitulo: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  modalCanalesBotonCerrar: {
+    padding: 8,
+  },
+  modalCanalesCargando: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 15,
+  },
+  modalCanalesCargandoTexto: {
+    color: COLORS.textSecondary,
+    fontSize: 16,
+  },
+  modalCanalesScroll: {
+    flex: 1,
+  },
+  modalCanalesScrollContent: {
+    paddingBottom: 20,
+  },
+  modalCanalesSeccion: {
+    marginBottom: 25,
+  },
+  modalCanalesSeccionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 15,
+  },
+  modalCanalesSeccionTituloContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  modalCanalesSeccionTitulo: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  modalCanalesVerTodo: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalCanalesFavoritosVacio: {
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  modalCanalesFavoritosVacioTexto: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  modalCanalesCarrusel: {
+    paddingHorizontal: 15,
+    gap: 12,
+  },
+  modalCanalesCanalCard: {
+    width: 140,
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  modalCanalesCanalCardActivo: {
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalCanalesCanalImagen: {
+    width: '100%',
+    height: 100,
+    backgroundColor: COLORS.border,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCanalesCanalImg: {
     width: '100%',
     height: '100%',
   },
-  modalCanalNombre: {
-    fontSize: 15,
+  modalCanalesCanalPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCanalesCanalActiveBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    padding: 4,
+  },
+  modalCanalesCanalFavBtn: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    padding: 4,
+  },
+  modalCanalesCanalInfo: {
+    padding: 12,
+  },
+  modalCanalesCanalNombre: {
+    fontSize: 13,
     fontWeight: '600',
     color: COLORS.text,
-    flex: 1,
+    marginBottom: 4,
+    lineHeight: 16,
   },
-  modalCategoriaCantidad: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 1,
-    fontWeight: '500',
-  },
-  modalCategoriaCantidadActiva: {
-    color: 'rgba(255,255,255,0.9)',
+  modalCanalesCanalEstado: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    lineHeight: 14,
   },
   // Estilos del modal de configuración
   modalConfiguracionScroll: {
@@ -1840,5 +2240,226 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
     letterSpacing: 1,
+  },
+  headerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  velocidadConexion: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  textoBotonInferior: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  // Estilos para modal de episodios simplificado
+  modalEpisodiosOverlayFull: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'flex-end',
+  },
+  modalEpisodiosProfesional: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    height: '80%',
+    overflow: 'hidden',
+  },
+  modalEpisodiosHeaderSimple: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalEpisodiosHeaderContenidoSimple: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  modalEpisodiosTituloHeaderSimple: {
+    flex: 1,
+  },
+  modalEpisodiosTituloTextoSimple: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 6,
+  },
+  modalEpisodiosSubtituloTextoSimple: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  modalEpisodiosBotonCerrarHeaderSimple: {
+    padding: 8,
+    marginLeft: 15,
+  },
+  modalEpisodiosTemporadasContainer: {
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  modalEpisodiosTemporadasContent: {
+    gap: 12,
+  },
+  modalEpisodiosTemporadaBtnPro: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 25,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  modalEpisodiosTemporadaBtnProActiva: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  modalEpisodiosTemporadaTextoPro: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalEpisodiosTemporadaTextoProActivo: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+  modalEpisodiosCargando: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalEpisodiosListaContent: {
+    paddingHorizontal: 15,
+    paddingVertical: 20,
+    gap: 18,
+  },
+  modalEpisodioItemProNuevo: {
+    width: 220,
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalEpisodioItemProNuevoActivo: {
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.5,
+  },
+  modalEpisodioItemProPrimero: {
+    marginLeft: 5,
+  },
+  modalEpisodioItemProUltimo: {
+    marginRight: 5,
+  },
+  modalEpisodioImagenProNuevo: {
+    width: '100%',
+    height: 140,
+    backgroundColor: COLORS.border,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  modalEpisodioImagenProImgNuevo: {
+    width: '100%',
+    height: '100%',
+  },
+  modalEpisodioImagenProPlaceholderNuevo: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalEpisodioImagenProOverlayNuevo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalEpisodioPlayButtonNuevo: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(33, 150, 243, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalEpisodioDuracionBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    zIndex: 5,
+  },
+  modalEpisodioDuracionBadgeTexto: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  modalEpisodioRatingBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    zIndex: 5,
+  },
+  modalEpisodioRatingBadgeTexto: {
+    color: '#FFD700',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  modalEpisodioInfoProNuevo: {
+    padding: 14,
+    flex: 1,
+  },
+  modalEpisodioNumeroProNuevo: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  modalEpisodioTituloProNuevo: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  modalEpisodioDescripcionProNuevo: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  modalEpisodioIndicadorActualNuevo: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    zIndex: 5,
   },
 });

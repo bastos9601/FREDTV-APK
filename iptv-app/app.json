@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "FRED TV",
-    "slug": "fredtv-iptv",
+    "name": "FREDS PRO",
+    "slug": "FREDSPRO-iptv",
     "version": "2.7.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fredtv.iptv",
+      "bundleIdentifier": "com.FREDSPRO.iptv",
       "buildNumber": "16"
     },
     "android": {
@@ -24,7 +24,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#141414"
       },
-      "package": "com.fredtv.iptv",
+      "package": "com.FREDSPRO.iptv",
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
